@@ -18,7 +18,7 @@ conexion = mysql.connector.connect(
 )
 
 cursor = conexion.cursor()
-datos = (15, 'Mohamed', 'Salah', '19', '100')
+datos = (2, 'Astrid', 'Arguelles', '23', '100')
 
 try:
     comando = f'INSERT INTO clientes2 (codigo, nombre, apellido, taller, pagado) values (%s,%s,%s,%s,%s)'

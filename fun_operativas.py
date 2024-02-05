@@ -99,6 +99,6 @@ def eliminar_elementos_creados(elementos, inicio=0):
 def dar_formato_talleres_lista(info):
     lista_formateada=[]
     for i in info:
-        taller = f'{i[0]}-{i[1]}-{i[3]}/{i[4]}/{i[5]}'
+        taller = f'{i[0]}-{i[1]}-{i[3]}/{i[4]}/{i[5]}'# 25-taller barro-25/03/2025
         lista_formateada.append(taller)
     return(lista_formateada)

@@ -168,6 +168,10 @@ def extraer_talleres_bd(mes, anio):
             return 'NOT FOUND'
     except mysql.connector.Error as error:
         return 'ERROR'
+    except ConnectionRefusedError:
+        return 'ERROR'
+    except Exception:
+        return 'ERROR'
     finally:
         conexion1.commit()
         cursor.close()
@@ -211,6 +215,8 @@ def enviar_cliente_bd(info):
     except mysql.connector.Error as Error:
         print(Error)
         return 'ERROR'
+    except ConnectionRefusedError:
+        return 'ERROR'
     finally:
         conexion.commit()
         cursor.close()
@@ -228,9 +234,6 @@ def extraer_clientes_bd(id):
         comando = f'SELECT * FROM clientes WHERE taller = %s'
         cursor.execute(comando, (id,))
         resultado = cursor.fetchall()
-
-        comando2 = f'SELECT * FROM clientes2 WHERE taller = %s'
-        cursor.execute(comando2, (id,))
         
         if resultado:
             return resultado
@@ -261,16 +264,14 @@ def modificar_pagado_db(cliente, pago):
         info = cursor.fetchall()
         if info:
             pago_actual = float(info[0][0])
-            print(f'EL PAGO ACTUAL ES DE {pago_actual}')
             pago_nuevo = float(pago)
-            print(f'EL NUEVO PAGO ES {pago_nuevo}')
             pagado_nuevo = pago_actual+pago_nuevo
             comando2 = f'UPDATE clientes SET pagado = %s WHERE codigo = %s'
             cursor.execute(comando2, (pagado_nuevo,cliente))
-            return (pago_actual+pago_nuevo)
+            return True
 
         else:
-            print('NI MADRES PAI')
+            print('NO INFO')
     except mysql.connector.Error as error:
         return('ERROR')
     finally:
@@ -301,3 +302,27 @@ def enviar_gasto_ingreso_db(info):
         conexion.close()
 
 
+###########    EXTRAER CLIENTE RECIEN DADO DE ALTA #####
+        
+def extraer_Codecliente_recien_agregado(nombre, apellido, taller, pago):
+    conexion = mysql.connector.connect(host='localhost',
+                                       user='root',
+                                       passwd='',
+                                       database='esart'                                  
+    )
+
+
+    cursor = conexion.cursor()
+
+    try:
+        comando = f"SELECT * FROM clientes WHERE nombre = %s AND apellido = %s AND taller = %s AND pagado = %s"
+        cursor.execute(comando, (nombre,apellido,taller,pago,))
+        resultado = cursor.fetchall()
+        if resultado:
+            print(resultado[0][0])
+            return resultado[0][0]
+        else:
+            return "NO INFO"
+    except mysql.connector.Error as error:
+        print(error)
+        return 'ERROR'
