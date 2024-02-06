@@ -116,6 +116,25 @@ def ventana_ingresar_gasto_ingreso():
                     messagebox.showinfo('ERROR', 'Excepcion en boton_enviar_funcion(op)-> estado_envio=enviar_gasto_ingreso_db(info)')
             else:
                 messagebox.showinfo('ERROR', 'EXISTE ERROR EN CAMPOS')
+        elif op == 'sueldos':
+            fecha = elementos_creados[6].get_date()
+            fecha_lista = fecha.split('/')
+            fecha_formateada = enlistar_fecha(fecha_lista)
+            empleado = elementos_creados[2].get().split('-')
+            #empleado_lista = empleado.split('-')
+            print(empleado)
+            info = (empleado[0], 'g', elementos_creados[4].get(), op, 'sueldos', fecha_formateada[0], fecha_formateada[1], fecha_formateada[2])
+            if verificar_campos_vacios(info) and solonumeros(elementos_creados[4].get()):
+                estado_envio = enviar_gasto_ingreso_db(info)
+                if estado_envio == True:
+                    print('SE HA ENVIADO LA INFORMACION')
+                    indicador = ttk.Label(frm, text='ENVIADO', background='GREEN')
+                    indicador.grid(column=1, row=5)
+                    frm.after(2000,lambda: indicador.grid_remove())
+                else:
+                    messagebox.showinfo('ERROR', 'Excepcion en boton_enviar_funcion(op)-> estado_envio=enviar_gasto_ingreso_db(info)')
+            else:
+                messagebox.showinfo('ERROR', 'EXISTE ERROR EN CAMPOS')
         else:
             messagebox.showinfo('ERROR', 'Error en variable op boton_enviar_funcion(op)')
     
@@ -318,6 +337,49 @@ def ventana_ingresar_gasto_ingreso():
         boton_enviar.grid(column=0, row=5)
         elementos_creados.append(boton_enviar)#7 elementos creados
 
+    def desplegar_opciones_sueldos():
+        global elementos_creados
+        op = 'sueldos'
+        label_descripcion = ttk.Label(frm, text='EMPLEADO:')
+        label_descripcion.grid(column=0, row=2)
+        elementos_creados.append(label_descripcion)#1 elementos creados
+
+        ######################### AQUI SE EXTRAE A LOS EMPLEADOS PARA PODER AGREGARLOS AL COMBOBOX COMO OPCIONES
+        personal = extraer_personal()
+        personal_lista = []
+        for i in personal:
+           minilista = []
+           for j in i:
+               x=str(j)
+               minilista.append(x)
+           personal_lista.append('-'.join(minilista))
+        #########################
+        empleados_combobox = ttk.Combobox(frm, values=personal_lista)
+        empleados_combobox.grid(column=1, row=2)
+        elementos_creados.append(empleados_combobox)#2 elementos creados
+
+        # entry_descripcion = ttk.Entry(frm, width=30)
+        # entry_descripcion.grid(column=1,row=2)
+        # elementos_creados.append(entry_descripcion)#2 elementos creados
+
+
+        label_monto = ttk.Label(frm, text='MONTO:')
+        label_monto.grid(column=0, row=3)
+        elementos_creados.append(label_monto)#3 elementos creados
+        entry_monto = ttk.Entry(frm, width=30)
+        entry_monto.grid(column=1,row=3)
+        elementos_creados.append(entry_monto)#4 elementos creados
+        label_fecha = ttk.Label(frm, text='Fecha')
+        label_fecha.grid(column=0, row=4)
+        elementos_creados.append(label_fecha)#5 elementos creados
+        fecha = datetime.now()
+        cal = Calendar(frm, selectmode="day", year=fecha.year, month=fecha.month, day=fecha.day)
+        cal.grid(column=1, row=4)
+        elementos_creados.append(cal)#6 elementos creados
+        boton_enviar = ttk.Button(frm, text='ENVIAR', command=lambda x=op: boton_enviar_funcion(op))
+        boton_enviar.grid(column=0, row=5)
+        elementos_creados.append(boton_enviar)#7 elementos creados
+        
 
     def desplegar_opciones_extra():
         global elementos_creados
@@ -365,6 +427,8 @@ def ventana_ingresar_gasto_ingreso():
             desplegar_opciones_alimentos()
         elif op == "MOBILIARIO":
             desplegar_opciones_mobiliario()
+        elif op == "SUELDOS":
+            desplegar_opciones_sueldos()
         else:
             print('ERROR en variable op opcion_seleccionada_gastos')
 
@@ -378,7 +442,7 @@ def ventana_ingresar_gasto_ingreso():
 
     def desplegar_combobox_gasto():
         global elementos_creados
-        combobox_op_gasto = ttk.Combobox(frm, values=['TALLER', 'MTNMTO', 'SERVICIO', 'ALIMENTO', 'MOBILIARIO'])
+        combobox_op_gasto = ttk.Combobox(frm, values=['TALLER', 'MTNMTO', 'SERVICIO', 'ALIMENTO', 'MOBILIARIO', 'SUELDOS'])
         combobox_op_gasto.grid(column=2 , row=1 )
         combobox_op_gasto.bind('<<ComboboxSelected>>', opcion_seleccionada_cboxsecundario)
         elementos_creados.append(combobox_op_gasto)#0 elementos creados
@@ -626,13 +690,10 @@ def ventana_pago_cliente():
             else:
                 desplegar_informacion(clientes, costo)
                 boton_buscar.config(state='disable')
-
-            
     ventana_secundaria = tk.Toplevel()
     frm = ttk.Frame(ventana_secundaria, padding=50)
     frm.place(x=100, y=100)
     frm.grid()
-    ttk.Label(frm, text="REALIZAR PAGO:").grid(column=0, row=0)
     # Menú desplegable con los meses y anios
     meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
     anios = ['2024', '2025', '2026', '2027', '2028', '2029', '2030']
@@ -709,7 +770,6 @@ def ventana_buscar_cliente():
                     indicador_costo.grid(column=5, row=i+5)
                     labels_creados.append(indicador_costo)
                 else:
-                    print('SI ESTA ENTRANDO AL BLOQUE EN REVISION')
                     indicador_costo = ttk.Label(frm, text=costo[0][0])
                     indicador_costo.grid(column=5, row=i+5)
                     labels_creados.append(indicador_costo)
@@ -1243,7 +1303,7 @@ def ventana_baja_taller():
 
 
 ########################################## DAR DE ALTA CURSO #####################################################
-def ventana_alta_taller():
+def ventana_alta_taller(): 
     def enviar_curso_a_bd():
         nombre_curso = entry_nombre.get()
         costo = entry_costo.get()
@@ -1299,21 +1359,132 @@ def ventana_alta_taller():
     ttk.Button(frm, text="GUARDAR", command=enviar_curso_a_bd).grid(column=1, row=7)
     ttk.Button(frm, text="CERRAR", command=ventana_secundaria.destroy).grid(column=1, row=8)
 
+########################################## VENTANA ALTA PERSONAL #####################################
+def ventana_alta_personal():
+    def enviar_personal():
+        nombre = entry_nombre.get()
+        apellido = entry_apellido.get()
+        apellido2 = entry_apellido2.get()
+        privilegio = combx_privilegios.get()
+        usuario = entry_usuario.get()
+        password = entry_contrasena.get()
+        info = (nombre, apellido, apellido2, privilegio, usuario, encriptador(password))
+        if verificar_campos_vacios(info):
+            resultado = enviar_personal_bd(info)
+            if resultado == True:
+                indicador = ttk.Label(frm, text='ENVIADO', background='green')
+                indicador.grid(column=1, row=0)
+            else:
+                indicador = ttk.Label(frm, text='ERROR', background='red')
+                indicador.grid(column=1, row=0)
+        else:
+            messagebox.showinfo('ERROR', 'Error en campos')
+
+        
+        
+
+    ventana_secundaria = tk.Toplevel()
+    frm = ttk.Frame(ventana_secundaria, padding=50)
+    frm.place(x=100, y=100)
+    frm.grid()
+    ttk.Label(frm, text='DAR DE ALTA PERSONAL').grid(column=0, row=0)
+    ttk.Label(frm, text='NOMBRE:').grid(column=0, row=1)
+    entry_nombre = ttk.Entry(frm)
+    entry_nombre.grid(column=1, row=1)
+
+    ttk.Label(frm, text='APELLIDO').grid(column=0, row=2)
+    entry_apellido = ttk.Entry(frm)
+    entry_apellido.grid(column=1, row=2)
     
+    ttk.Label(frm, text='APELLIDO 2').grid(column=0, row=3)
+    entry_apellido2 = ttk.Entry(frm)
+    entry_apellido2.grid(column=1, row=3)
+
+    ttk.Label(frm, text='PRIVILEGIO').grid(column=0, row=4)
+    combx_privilegios = ttk.Combobox(frm, values=['ADMINISTRADOR', 'USUARIO'])
+    combx_privilegios.grid(column=1, row=4)
+
+    ttk.Label(frm, text='USUARIO').grid(column=0, row=5)
+    entry_usuario = ttk.Entry(frm)
+    entry_usuario.grid(column=1, row=5)
+
+    ttk.Label(frm, text='CONTRASEÑA').grid(column=0, row=6)
+    entry_contrasena = ttk.Entry(frm)
+    entry_contrasena.grid(column=1, row=6)
+
+    boton_enviar = ttk.Button(frm, text='ENVIAR', command=enviar_personal)
+    boton_enviar.grid(column=1, row=7)
+
+
 ######################################### MAIN ############################################################
 def main():
+    def verificar_usuario():
+        usuario_ingresado = entry_usuario.get()
+        psw_ingresado = entry_psw.get()
+        pswReal = extraer_personal_pverificar(usuario_ingresado)
+        print(pswReal)
+        print('hola')
+        if pswReal == 'NO INFO':
+            messagebox.showinfo('ERROR', 'NO COINCIDE NINGUN USUARIO')
+        elif pswReal == 'ERROR':
+            messagebox.showinfo('ERROR', 'ERROR DB')
+        elif psw_ingresado == desencriptador(pswReal[0][0]):
+            if pswReal[0][1] == 'ADMINISTRADOR':
+                boton_altaPersonal.config(state='enable')
+                boton_altaTaller.config(state='enable')
+                boton_bajaTaller.config(state='enable')
+                boton_buscarCliente.config(state='enable')
+                boton_consultaTaller.config(state='enable')
+                boton_gastoIngreso.config(state='enable')
+                boton_inscribirCliente.config(state='enable')
+                boton_pagoCliente.config(state='enable')
+            elif pswReal[0][1] == 'USUARIO':
+                #boton_altaPersonal.config(state='enable')
+                #boton_altaTaller.config(state='enable')
+                #boton_bajaTaller.config(state='enable')
+                boton_buscarCliente.config(state='enable')
+                boton_consultaTaller.config(state='enable')
+                #boton_gastoIngreso.config(state='enable')
+                boton_inscribirCliente.config(state='enable')
+                boton_pagoCliente.config(state='enable')
+            else:
+                messagebox.showinfo('ERROR', 'Error en variable pswReal[0][1]')
+        
+        elif pswReal != psw_ingresado:
+            messagebox.showinfo('ERROR', 'LA CONTRASEÑA NO COINCIDE')
+        else:
+            messagebox.showinfo('ERROR', 'ERROR EXTRAÑO VARIABLE pswReal')
+            
+
     root = Tk()
     frm = ttk.Frame(root, padding=50)
     frm.grid()
     ttk.Label(frm, text="ESART SISTEMA ADMINISTRATIVO").grid(column=1, row=0)
-    ttk.Button(frm, text="DAR DE ALTA TALLER", command=ventana_alta_taller).grid(column=1, row=1)
-    ttk.Button(frm, text="DAR DE BAJA TALLER", command=ventana_baja_taller).grid(column=1, row=2)
-    ttk.Button(frm, text="CONSULTAR TALLER", command=ventana_consultar_taller).grid(column=1, row=3)
-    ttk.Button(frm, text="INSCRIBIR CLIENTE", command=ventana_inscribir_cliente).grid(column=2, row=1)
-    ttk.Button(frm, text="BUSCAR CLIENTE", command=ventana_buscar_cliente).grid(column=2, row=2)
-    ttk.Button(frm, text="PAGO CLIENTE", command=ventana_pago_cliente).grid(column=2, row=3)
-    ttk.Button(frm, text="ALTA GASTO/INGRESO", command=ventana_ingresar_gasto_ingreso).grid(column=3, row=1)
-    ttk.Button(frm, text="CERRAR", command=root.destroy).grid(column=1, row=6)
+    ttk.Label(frm, text='INICIAR SESION:').grid(column=1, row=2)
+    ttk.Label(frm, text='USUARIO:').grid(column=2, row=1)
+    ttk.Label(frm, text='CONTRASEÑA:').grid(column=3, row=1)
+    entry_usuario = ttk.Entry(frm)
+    entry_usuario.grid(column=2, row=2)
+    entry_psw = ttk.Entry(frm, show='*')
+    entry_psw.grid(column=3, row=2)
+    ttk.Button(frm, text='ENTER', command=verificar_usuario).grid(column=4, row=2)
+    boton_altaTaller = ttk.Button(frm, text="DAR DE ALTA TALLER", command=ventana_alta_taller, state='disable')
+    boton_altaTaller.grid(column=1, row=3)
+    boton_bajaTaller = ttk.Button(frm, text="DAR DE BAJA TALLER", command=ventana_baja_taller, state='disable')
+    boton_bajaTaller.grid(column=1, row=4)
+    boton_consultaTaller = ttk.Button(frm, text="CONSULTAR TALLER", command=ventana_consultar_taller, state='disable')
+    boton_consultaTaller.grid(column=1, row=5)
+    boton_inscribirCliente = ttk.Button(frm, text="INSCRIBIR CLIENTE", command=ventana_inscribir_cliente, state='disable')
+    boton_inscribirCliente.grid(column=2, row=3)
+    boton_buscarCliente = ttk.Button(frm, text="BUSCAR CLIENTE", command=ventana_buscar_cliente, state='disable')
+    boton_buscarCliente.grid(column=2, row=4)
+    boton_pagoCliente = ttk.Button(frm, text="PAGO CLIENTE", command=ventana_pago_cliente, state='disable')
+    boton_pagoCliente.grid(column=2, row=5)
+    boton_gastoIngreso = ttk.Button(frm, text="ALTA GASTO/INGRESO", command=ventana_ingresar_gasto_ingreso, state='disable')
+    boton_gastoIngreso.grid(column=3, row=3)
+    boton_altaPersonal = ttk.Button(frm, text="ALTA PERSONAL", command=ventana_alta_personal, state='disable')
+    boton_altaPersonal.grid(column=4, row=3)
+    ttk.Button(frm, text="CERRAR", command=root.destroy).grid(column=1, row=8)
     #HOLA
     root.mainloop()
 
