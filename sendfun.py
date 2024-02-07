@@ -58,7 +58,7 @@ def envio_bd_curso(info):
                                   database="esart")
     cursor1 = conexion1.cursor() 
     try:
-        comando = "insert into cursos(nombre, costo, dia, mes, anio, horario, disponibilidad, gasto_materiales) values (%s,%s,%s,%s,%s,%s,%s,%s)"
+        comando = "insert into cursos(nombre, costo, dia, mes, anio, horario, disponibilidad) values (%s,%s,%s,%s,%s,%s,%s)"
         cursor1.execute(comando, info)
     except mysql.connector.Error as error:
         print(f"Error al ejecutar la consulta: {error}")

@@ -8,7 +8,7 @@ from datetime import datetime
 from tkcalendar import Calendar
 from tkinter import messagebox
 
-psw = '1234'
+global password
 
 def ventana_ingresar_gasto_ingreso(): 
     #SUELDOS
@@ -586,7 +586,6 @@ def ventana_pago_cliente():
             indicador.grid(column=8, row=4)
             frm.after(2000, lambda: indicador.grid_remove())
             comando_actualizar_info()
-
         elif x == 'NO INFO':
             indicador = ttk.Label(frm, text='NO INFO', background='red')
             indicador.grid(column=8, row=4)
@@ -695,6 +694,8 @@ def ventana_pago_cliente():
     frm.place(x=100, y=100)
     frm.grid()
     # Menú desplegable con los meses y anios
+    label_pagocliente = ttk.Label(frm, text='PAGO CLIENTE:')
+    label_pagocliente.grid(column=0, row=0)
     meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
     anios = ['2024', '2025', '2026', '2027', '2028', '2029', '2030']
     mes_combobox = ttk.Combobox(frm, values=meses, state="readonly")
@@ -725,8 +726,6 @@ def ventana_pago_cliente():
     ttk.Label(frm, text='COSTO:').grid(column=5, row=4)
     ttk.Label(frm, text='FALTANTE:').grid(column=6, row=4)
     ttk.Label(frm, text='PAGO:').grid(column=7, row=4)
-
-
 
 ############################################### BUSCAR CLIENTE      ##############################################
 def ventana_buscar_cliente():
@@ -1232,13 +1231,11 @@ def ventana_inscribir_cliente():
 
 ###############################################     DAR DE BAJA TALLER      ########################################
 
-
 def ventana_baja_taller():
     def comparar_psw():
-        global psw
+        global password
         psw_introducida = intro_psw.get()
-        if psw == psw_introducida:
-            
+        if password == psw_introducida:
             entry_codigo_curso.config(state = 'normal')
             button_psw_aceptar2.config(state = 'normal')
             button_psw_aceptar3.config(state = 'normal')
@@ -1278,15 +1275,12 @@ def ventana_baja_taller():
             intro_psw.delete(0, 'end')
 
 
-
-
-
     ventana_secundaria = tk.Toplevel()
     frm = ttk.Frame(ventana_secundaria, padding=50)
     frm.place(x=100, y=100)
     frm.grid()
     ttk.Label(frm, text="ELIMINAR CURSO\nPASSWORD:").grid(column=0, row=0)
-    intro_psw = ttk.Entry(frm)
+    intro_psw = ttk.Entry(frm, show='*')
     intro_psw.grid(column=0, row=1)
     button_psw_aceptar = ttk.Button(frm, text='ACEPTAR', command=comparar_psw).grid(column=0, row=2)
     ttk.Label(frm, text='CODIGO DE CURSO:').grid(column=0, row=3)
@@ -1300,7 +1294,6 @@ def ventana_baja_taller():
     button_psw_aceptar3 = ttk.Button(frm, text='ACEPTAR', command=confirmar_eliminar, state='disabled')
     button_psw_aceptar3.grid(column=0, row=8)
     ttk.Button(frm, text="CERRAR", command=ventana_secundaria.destroy).grid(column=0, row=9)
-
 
 ########################################## DAR DE ALTA CURSO #####################################################
 def ventana_alta_taller(): 
@@ -1319,8 +1312,7 @@ def ventana_alta_taller():
             pass
         horario = entry_horario.get()
         disponibilidad = entry_disponibilidad.get()
-        gastos_materiales = entry_gasto_materiales.get()
-        info = (nombre_curso, costo, fecha_curso_lista[1],fecha_curso_lista[0],fecha_curso_lista[2], horario, disponibilidad, gastos_materiales)
+        info = (nombre_curso, costo, fecha_curso_lista[1],fecha_curso_lista[0],fecha_curso_lista[2], horario, disponibilidad)
         if envio_bd_curso(info) == None:
             indicador = ttk.Label(frm, text="EXITO", background='green')
             indicador.grid(column=2, row=7)
@@ -1353,9 +1345,6 @@ def ventana_alta_taller():
     ttk.Label(frm, text="DISPONIBILIDAD").grid(column=1, row=5)
     entry_disponibilidad = ttk.Entry(frm)
     entry_disponibilidad.grid(column=2 , row=5)
-    ttk.Label(frm, text="COSTO DE MATERIALES").grid(column=1, row=6)
-    entry_gasto_materiales = ttk.Entry(frm, state='disable')
-    entry_gasto_materiales.grid(column=2 , row=6)
     ttk.Button(frm, text="GUARDAR", command=enviar_curso_a_bd).grid(column=1, row=7)
     ttk.Button(frm, text="CERRAR", command=ventana_secundaria.destroy).grid(column=1, row=8)
 
@@ -1419,16 +1408,16 @@ def ventana_alta_personal():
 ######################################### MAIN ############################################################
 def main():
     def verificar_usuario():
+        global password
         usuario_ingresado = entry_usuario.get()
         psw_ingresado = entry_psw.get()
         pswReal = extraer_personal_pverificar(usuario_ingresado)
-        print(pswReal)
-        print('hola')
         if pswReal == 'NO INFO':
             messagebox.showinfo('ERROR', 'NO COINCIDE NINGUN USUARIO')
         elif pswReal == 'ERROR':
             messagebox.showinfo('ERROR', 'ERROR DB')
         elif psw_ingresado == desencriptador(pswReal[0][0]):
+            password = desencriptador(pswReal[0][0])
             if pswReal[0][1] == 'ADMINISTRADOR':
                 boton_altaPersonal.config(state='enable')
                 boton_altaTaller.config(state='enable')
