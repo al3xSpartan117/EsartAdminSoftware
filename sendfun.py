@@ -326,3 +326,72 @@ def extraer_Codecliente_recien_agregado(nombre, apellido, taller, pago):
     except mysql.connector.Error as error:
         print(error)
         return 'ERROR'
+    
+####### ENVIAR PERSONAL
+def enviar_personal_bd(info):
+    conexion = mysql.connector.connect(host='localhost',
+                                       user='root',
+                                       passwd='',
+                                       database='esart'
+    )
+
+    cursor = conexion.cursor()
+
+    try:
+        comando = f'INSERT INTO personal (nombre, apellido, apellido2, privilegios, usuario, psw) VALUES(%s,%s,%s,%s,%s,%s)'
+        cursor.execute(comando, info)
+        return True
+    except mysql.connector.Error as error:
+        return 'ERROR'
+    finally:
+        conexion.commit()
+        cursor.close()
+        conexion.close()
+
+######### EXTRAER USUARIO Y CONTRASENA
+def extraer_personal_pverificar(usr):
+    conexion = mysql.connector.connect(host="localhost", 
+                                  user="root", 
+                                  passwd="", 
+                                  database="esart")
+    cursor = conexion.cursor()
+
+    try:
+        comando = f'SELECT psw, privilegios FROM personal WHERE usuario = %s'
+        cursor.execute(comando, (usr,))
+        resultado = cursor.fetchall()
+        if resultado:
+            return resultado
+        else:
+            return 'NO INFO'
+    except mysql.connector.Error as error:
+        print(error)
+        return 'ERROR'
+    finally:
+        conexion.commit()
+        cursor.close()
+        conexion.close()
+
+##########################EXTRAER EMPLEADO####################################
+def extraer_personal():
+    conexion = mysql.connector.connect(host="localhost", 
+                                  user="root", 
+                                  passwd="", 
+                                  database="esart")
+    cursor = conexion.cursor()
+
+    try:
+        comando = f'SELECT codigo, nombre, apellido FROM personal'
+        cursor.execute(comando)
+        resultado = cursor.fetchall()
+        if resultado:
+            return resultado
+        else:
+            return 'NO INFO'
+    except mysql.connector.Error as error:
+        print(error)
+        return 'ERROR'
+    finally:
+        conexion.commit()
+        cursor.close()
+        conexion.close()

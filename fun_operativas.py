@@ -102,3 +102,26 @@ def dar_formato_talleres_lista(info):
         taller = f'{i[0]}-{i[1]}-{i[3]}/{i[4]}/{i[5]}'# 25-taller barro-25/03/2025
         lista_formateada.append(taller)
     return(lista_formateada)
+
+#encriptador
+def encriptador(psswr):
+    encriptado = []
+    encriptado_str = []
+    for i in psswr:
+        code = ord(i)
+        x=code-30
+        encriptado.append(x)
+    for j in encriptado:
+        encriptado_str.append(str(j))
+    return '-'.join(encriptado_str)
+
+#desencriptador
+def desencriptador(psswr):
+    psswr_lista = psswr.split('-')
+    desencriptado = []
+    for i in psswr_lista:
+        x = int(i)+30
+        desencriptado.append(chr(x))
+
+    passwr = ''.join(desencriptado)
+    return passwr
