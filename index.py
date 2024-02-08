@@ -8,13 +8,10 @@ from datetime import datetime
 from tkcalendar import Calendar
 from tkinter import messagebox
 
-psw = '1234'
+global password
 
 def ventana_ingresar_gasto_ingreso(): 
-    #SUELDOS
-    #SERVICIOS
-    #COMIDA
-    #MOBILIARIO
+
     def boton_enviar_funcion(op):
         global elementos_creados
         if op == 'extra':
@@ -476,7 +473,6 @@ def ventana_ingresar_gasto_ingreso():
     gastoIngreso_combobox.grid(column=1,row=1)
     gastoIngreso_combobox.bind("<<ComboboxSelected>>", opcion_seleccionada_combobox)
 
-    
 ########################################### VENTANA PAGO CLIENTE ################################
 def ventana_pago_cliente():
     def buscar_curso_boton():
@@ -505,7 +501,7 @@ def ventana_pago_cliente():
             indicador.grid(column=3, row=1)
             frm.after(3000, lambda: indicador.grid_remove())
             mostrar_cursos_combobox.set('')
-            mostrar_cursos_combobox.config(state='disable', width=50)
+            mostrar_cursos_combobox.config(state='disable', width=20)
         else:
             indicador = ttk.Label(frm, text='COINCIDENCIA', background='green')
             indicador.grid(column=3, row=1)
@@ -514,7 +510,7 @@ def ventana_pago_cliente():
             for i in informacion:
                 formato_codigo_curso = f'{i[0]}-{i[1]}'
                 info_lista.append(formato_codigo_curso)
-            mostrar_cursos_combobox.config(state='readonly', values=info_lista, width=50)
+            mostrar_cursos_combobox.config(state='readonly', values=info_lista, width=20)
 
     def opcion_seleccionada_combobox(event): #FUNCION QUE SE EJECUTA CUANDO EL USUARIO SELECCIONA UNA OPCION DEL COMBOBOX
         taller = mostrar_cursos_combobox.get()
@@ -574,19 +570,20 @@ def ventana_pago_cliente():
     
     def comando_boton_pagar_bucle(i, cliente, taller):
         global entrys_creados
+        global combobox_creados
         info = entrys_creados[i].get()
         x = modificar_pagado_db(cliente, info)
+        metodo = combobox_creados[i].get()
         if x == True:
             fecha = datetime.now()
             fecha_lista = [str(fecha.month), str(fecha.day), str(fecha.year)]
             fecha_organizada = enlistar_fecha(fecha_lista, 'datetime')
-            informacion_ingreso = [cliente, 'i',  info, 'taller', taller, fecha_organizada[0], fecha_organizada[1], fecha_organizada[2]]
-            enviar_gasto_ingreso_db(informacion_ingreso)
+            informacion_ingreso = [cliente, 'i', info, metodo, 'taller', taller, fecha_organizada[0], fecha_organizada[1], fecha_organizada[2]]
+            enviar_gasto_ingreso_db(informacion_ingreso, op=2)
             indicador = ttk.Label(frm, text='EXITO', background='green')
             indicador.grid(column=8, row=4)
             frm.after(2000, lambda: indicador.grid_remove())
             comando_actualizar_info()
-
         elif x == 'NO INFO':
             indicador = ttk.Label(frm, text='NO INFO', background='red')
             indicador.grid(column=8, row=4)
@@ -596,12 +593,22 @@ def ventana_pago_cliente():
             global labels_creados
             global entrys_creados
             global botones_creados
+            global combobox_creados
+            combobox_creados = []
             entrys_creados = []
             labels_creados =[]
             botones_creados = []
             total_taller = 0.0
             total_pagado = 0.0
             total_faltante = 0.0
+            tarjetas = extraer_tarjetas_bd()
+            if tarjetas == 'NO INFO':
+                messagebox.showerror('ERROR', 'NO SE ENCONTRO INFORMACION DE TARJETAS')
+            elif tarjetas == 'ERROR':
+                messagebox.showerror('ERROR', 'ERROR EN BASE DE DATOS')
+            else:
+                metodos_pago = ['Efectivo']
+                metodos_pago = metodos_pago + formato_a_tarjetas(tarjetas)
             for i in range(0, len(info)):
                 indicador_codigo = ttk.Label(frm, text=info[i][0],border=100)
                 indicador_codigo.grid(column= 0, row= i+5)
@@ -621,11 +628,11 @@ def ventana_pago_cliente():
                 indicador_costo = ttk.Label(frm, text=costo)
                 indicador_costo.grid(column= 5, row= i+5)
                 labels_creados.append(indicador_costo)
-                entry_pago = ttk.Entry(frm)
+                entry_pago = ttk.Entry(frm, width=5)
                 entry_pago.grid(column= 7, row= i+5)
                 entrys_creados.append(entry_pago)
                 boton_pagar = ttk.Button(frm, text='PAGAR', command=lambda indice=i, cliente=info[i][0], taller=info[i][3]: comando_boton_pagar_bucle(indice, cliente, taller))
-                boton_pagar.grid(column=8, row=i+5)
+                boton_pagar.grid(column=9, row=i+5)
                 botones_creados.append(boton_pagar)
                 faltante = float(costo[0][0])-float(info[i][4])
                 conversion1 = float(costo[0][0])
@@ -642,6 +649,13 @@ def ventana_pago_cliente():
                     indicador_faltante.grid(column= 6, row= i+5)
                     labels_creados.append(indicador_faltante)
                     total_faltante += faltante
+                combobox_tipoPago = ttk.Combobox(frm, values=metodos_pago, width=10)#AQUI SE TIENEN QUE DESPLEGAR LAS TARJETAS DISPONIBLES
+                combobox_tipoPago.grid(column=8, row=i+5)
+                combobox_creados.append(combobox_tipoPago)
+                indicador_nombre2 = ttk.Label(frm, text=info[i][1])
+                indicador_nombre2.grid(column=10, row=i+5)
+                labels_creados.append(indicador_nombre2)
+                #########################################
             indicador_total_taller = ttk.Label(frm, text=total_taller, background='#add8e6')
             indicador_total_taller.grid(column= 5, row= ultimo_label+1)
             labels_creados.append(indicador_total_taller)
@@ -695,11 +709,13 @@ def ventana_pago_cliente():
     frm.place(x=100, y=100)
     frm.grid()
     # Menú desplegable con los meses y anios
+    label_pagocliente = ttk.Label(frm, text='PAGO CLIENTE:')
+    label_pagocliente.grid(column=0, row=0)
     meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
     anios = ['2024', '2025', '2026', '2027', '2028', '2029', '2030']
-    mes_combobox = ttk.Combobox(frm, values=meses, state="readonly")
+    mes_combobox = ttk.Combobox(frm, values=meses, state="readonly", width=10)
     mes_combobox.grid(column=1, row=2)
-    anio_combobox = ttk.Combobox(frm, values=anios, state='readonly')
+    anio_combobox = ttk.Combobox(frm, values=anios, state='readonly', width=10)
     anio_combobox.grid(column=2, row=2)
     ttk.Label(frm, text='BUSCAR CURSO POR FECHA:').grid(column=0, row=2 )
     ttk.Label(frm, text='MES').grid(column=1, row=1)
@@ -707,26 +723,25 @@ def ventana_pago_cliente():
     ttk.Label(frm, text='SELECCIONAR TALLER:').grid(column=4, row=1)
     boton_buscar = ttk.Button(frm, text="Buscar", command=buscar_curso_boton)
     boton_buscar.grid(column=3, row=2)
-    mostrar_cursos_combobox = ttk.Combobox(frm, state="disable", width=50)
+    mostrar_cursos_combobox = ttk.Combobox(frm, state="disable", width=20)
     mostrar_cursos_combobox.grid(column=4, row=2)
     mostrar_cursos_combobox.bind("<<ComboboxSelected>>", opcion_seleccionada_combobox)
     #BUSCAR POR CODIGO
     ttk.Label(frm, text='BUSCAR POR CODIGO:').grid(column=0, row=3)
-    entry_codigo = ttk.Entry(frm)
+    entry_codigo = ttk.Entry(frm, width=10)
     entry_codigo.grid(column=1, row=3)
     boton_buscar_pCodigo = ttk.Button(frm, text='BUSCAR', command=comando_buscar_tallerPCodigo)
     boton_buscar_pCodigo.grid(column=2, row=3)
     #NOMBRE CASILLAS
-    ttk.Label(frm, text='CODIGO:').grid(column=0, row=4)
-    ttk.Label(frm, text='NOMBRE:').grid(column=1, row=4)
-    ttk.Label(frm, text='APELLIDO:').grid(column=2, row=4)
-    ttk.Label(frm, text='TALLER:').grid(column=3, row=4)
-    ttk.Label(frm, text='PAGADO:').grid(column=4, row=4)
-    ttk.Label(frm, text='COSTO:').grid(column=5, row=4)
-    ttk.Label(frm, text='FALTANTE:').grid(column=6, row=4)
-    ttk.Label(frm, text='PAGO:').grid(column=7, row=4)
-
-
+    ttk.Label(frm, text='CODIGO').grid(column=0, row=4)
+    ttk.Label(frm, text='NOMBRE').grid(column=1, row=4)
+    ttk.Label(frm, text='APELLIDO').grid(column=2, row=4)
+    ttk.Label(frm, text='TALLER').grid(column=3, row=4)
+    ttk.Label(frm, text='PAGADO').grid(column=4, row=4)
+    ttk.Label(frm, text='COSTO').grid(column=5, row=4)
+    ttk.Label(frm, text='FALTANTE').grid(column=6, row=4)
+    ttk.Label(frm, text='PAGO').grid(column=7, row=4)
+    ttk.Label(frm, text='TIPO DE PAGO').grid(column=8, row=4)
 
 ############################################### BUSCAR CLIENTE      ##############################################
 def ventana_buscar_cliente():
@@ -779,6 +794,8 @@ def ventana_buscar_cliente():
                     indicador_faltante = ttk.Label(frm, text=faltante)
                     indicador_faltante.grid(column=6, row=i+5)
                     labels_creados.append(indicador_costo)
+                    indicador_celular = ttk.Label(frm, text=info[i][5])
+                    indicador_celular.grid(column=7, row=i+5)
 
 
 
@@ -875,7 +892,7 @@ def ventana_buscar_cliente():
     ttk.Label(frm, text='PAGADO').grid(column=4,row=4)
     ttk.Label(frm, text='COSTO').grid(column=5,row=4)
     ttk.Label(frm, text='FALTANTE').grid(column=6,row=4)
-
+    ttk.Label(frm, text='TELEFONO').grid(column=7,row=4)
 
 ############################################### CONSULTAR TALLER    ###############################################
 def ventana_consultar_taller():
@@ -1007,6 +1024,12 @@ def ventana_consultar_taller():
                     indicador_faltante.grid(column= 6, row= i+5)
                     labels_creados1.append(indicador_faltante)
                     total_faltante += faltante
+                indicador_nombre2 = ttk.Label(frm, text=info[i][1])
+                indicador_nombre2.grid(column=7, row=i+5)
+                labels_creados1.append(indicador_nombre2)
+                indicador_telefono = ttk.Label(frm, text=info[i][5])
+                indicador_telefono.grid(column=8, row=i+5)
+                labels_creados1.append(indicador_telefono)
             indicador_total_taller = ttk.Label(frm, text=total_taller, background='#add8e6')
             indicador_total_taller.grid(column= 5, row= ultimo_label+1)
             labels_creados1.append(indicador_total_taller)
@@ -1085,14 +1108,15 @@ def ventana_consultar_taller():
     boton_buscar_pCodigo = ttk.Button(frm, text='BUSCAR', command=comando_buscar_tallerPCodigo)
     boton_buscar_pCodigo.grid(column=2, row=3)
     #NOMBRE CASILLAS
-    ttk.Label(frm, text='CODIGO:').grid(column=0, row=4)
-    ttk.Label(frm, text='NOMBRE:').grid(column=1, row=4)
-    ttk.Label(frm, text='APELLIDO:').grid(column=2, row=4)
-    ttk.Label(frm, text='TALLER:').grid(column=3, row=4)
-    ttk.Label(frm, text='PAGADO:').grid(column=4, row=4)
-    ttk.Label(frm, text='COSTO:').grid(column=5, row=4)
-    ttk.Label(frm, text='FALTANTE:').grid(column=6, row=4)
-
+    ttk.Label(frm, text='CODIGO').grid(column=0, row=4)
+    ttk.Label(frm, text='NOMBRE').grid(column=1, row=4)
+    ttk.Label(frm, text='APELLIDO').grid(column=2, row=4)
+    ttk.Label(frm, text='TALLER').grid(column=3, row=4)
+    ttk.Label(frm, text='PAGADO').grid(column=4, row=4)
+    ttk.Label(frm, text='COSTO').grid(column=5, row=4)
+    ttk.Label(frm, text='FALTANTE').grid(column=6, row=4)
+    ttk.Label(frm, text='NOMBRE').grid(column=7, row=4)
+    ttk.Label(frm, text='TELEFONO').grid(column=8, row=4)
 
 ###############################################    INSCRIBIR CLIENTE       #####################################
 def ventana_inscribir_cliente():
@@ -1103,8 +1127,9 @@ def ventana_inscribir_cliente():
         taller = mostrar_cursos_combobox.get()
         taller_lista = taller.split('-')
         pago = pago_cliente_entry.get()
-        informacion = (nombre, apellido, taller_lista[0], pago)
-        if verificar_campos_vacios(informacion) and solonumeros(pago):
+        telefono = entry_telefono.get()
+        informacion = (nombre, apellido, taller_lista[0], pago, telefono)
+        if verificar_campos_vacios(informacion) and solonumeros(pago) and verificadorCel(telefono):
             resultado_envio = enviar_cliente_bd(informacion)
             if resultado_envio == 'ERROR':
                 indicador = ttk.Label(frm, text='ERROR AL ENVIAR', background='red')
@@ -1134,7 +1159,6 @@ def ventana_inscribir_cliente():
         else:
             messagebox.showinfo('ERROR','EXISTE ERROR EN CAMPO')
 
-        
     def buscar_curso_boton():
         mes_seleccionado = mes_combobox.get()
         mes_en_numero = {'Enero':'01', 
@@ -1221,6 +1245,10 @@ def ventana_inscribir_cliente():
     # Botón para enviar informacion
     boton_enviar = ttk.Button(frm, text="ENVIAR", command=enviar_cliente_boton)
     boton_enviar.grid(column=0, row=7)
+    ########### NUMERO DE TELEFONO
+    ttk.Label(frm, text='TELEFONO').grid(column=2, row=1)
+    entry_telefono = ttk.Entry(frm)
+    entry_telefono.grid(column=3, row=1)
     
     
     
@@ -1232,13 +1260,11 @@ def ventana_inscribir_cliente():
 
 ###############################################     DAR DE BAJA TALLER      ########################################
 
-
 def ventana_baja_taller():
     def comparar_psw():
-        global psw
+        global password
         psw_introducida = intro_psw.get()
-        if psw == psw_introducida:
-            
+        if password == psw_introducida:
             entry_codigo_curso.config(state = 'normal')
             button_psw_aceptar2.config(state = 'normal')
             button_psw_aceptar3.config(state = 'normal')
@@ -1278,15 +1304,12 @@ def ventana_baja_taller():
             intro_psw.delete(0, 'end')
 
 
-
-
-
     ventana_secundaria = tk.Toplevel()
     frm = ttk.Frame(ventana_secundaria, padding=50)
     frm.place(x=100, y=100)
     frm.grid()
     ttk.Label(frm, text="ELIMINAR CURSO\nPASSWORD:").grid(column=0, row=0)
-    intro_psw = ttk.Entry(frm)
+    intro_psw = ttk.Entry(frm, show='*')
     intro_psw.grid(column=0, row=1)
     button_psw_aceptar = ttk.Button(frm, text='ACEPTAR', command=comparar_psw).grid(column=0, row=2)
     ttk.Label(frm, text='CODIGO DE CURSO:').grid(column=0, row=3)
@@ -1300,7 +1323,6 @@ def ventana_baja_taller():
     button_psw_aceptar3 = ttk.Button(frm, text='ACEPTAR', command=confirmar_eliminar, state='disabled')
     button_psw_aceptar3.grid(column=0, row=8)
     ttk.Button(frm, text="CERRAR", command=ventana_secundaria.destroy).grid(column=0, row=9)
-
 
 ########################################## DAR DE ALTA CURSO #####################################################
 def ventana_alta_taller(): 
@@ -1319,8 +1341,7 @@ def ventana_alta_taller():
             pass
         horario = entry_horario.get()
         disponibilidad = entry_disponibilidad.get()
-        gastos_materiales = entry_gasto_materiales.get()
-        info = (nombre_curso, costo, fecha_curso_lista[1],fecha_curso_lista[0],fecha_curso_lista[2], horario, disponibilidad, gastos_materiales)
+        info = (nombre_curso, costo, fecha_curso_lista[1],fecha_curso_lista[0],fecha_curso_lista[2], horario, disponibilidad)
         if envio_bd_curso(info) == None:
             indicador = ttk.Label(frm, text="EXITO", background='green')
             indicador.grid(column=2, row=7)
@@ -1353,9 +1374,6 @@ def ventana_alta_taller():
     ttk.Label(frm, text="DISPONIBILIDAD").grid(column=1, row=5)
     entry_disponibilidad = ttk.Entry(frm)
     entry_disponibilidad.grid(column=2 , row=5)
-    ttk.Label(frm, text="COSTO DE MATERIALES").grid(column=1, row=6)
-    entry_gasto_materiales = ttk.Entry(frm, state='disable')
-    entry_gasto_materiales.grid(column=2 , row=6)
     ttk.Button(frm, text="GUARDAR", command=enviar_curso_a_bd).grid(column=1, row=7)
     ttk.Button(frm, text="CERRAR", command=ventana_secundaria.destroy).grid(column=1, row=8)
 
@@ -1415,20 +1433,64 @@ def ventana_alta_personal():
     boton_enviar = ttk.Button(frm, text='ENVIAR', command=enviar_personal)
     boton_enviar.grid(column=1, row=7)
 
+######################################### VENTANA ALTA TARJETA ######################################
+    
+def ventana_alta_tarjeta():
+    def enviar_tarjeta():
+        titular = entry_titular.get()
+        digitos = entry_4digitos.get()
+        banco = entry_banco.get()
+        vencimiento = entry_vencimiento.get()
+        info = [titular, digitos, banco.upper(), vencimiento]
+        if verificar_campos_vacios(info) and solonumeros(digitos):
+            resultado_envio = enviar_tarjeta_bd(info)
+            if resultado_envio == True:
+                indicador = ttk.Label(frm, text='ENVIADO', background='green')
+                indicador.grid(column=1, row=0)
+                frm.after(3000, lambda: indicador.grid_remove())
+            else:
+                indicador = ttk.Label(frm, text='NO ENVIADO', background='red')
+                indicador.grid(column=1, row=0)
+                frm.after(3000, lambda: indicador.grid_remove())
+        else:
+            messagebox.showinfo('ERROR', 'EXISTE ERROR EN CAMPOS')
+
+    ventana_secundaria = tk.Toplevel()
+    frm = ttk.Frame(ventana_secundaria, padding=50)
+    frm.place(x=100, y=100)
+    frm.grid()
+    ttk.Label(frm, text='DAR DE ALTA TARJETA').grid(column=0, row=0)
+    ttk.Label(frm, text='TITULAR:').grid(column=0, row=1)
+    entry_titular = ttk.Entry(frm)
+    entry_titular.grid(column=1, row=1)
+
+    ttk.Label(frm, text='ULTIMOS 4 DIGITOS').grid(column=0, row=2)
+    entry_4digitos = ttk.Entry(frm)
+    entry_4digitos.grid(column=1, row=2)
+    
+    ttk.Label(frm, text='BANCO').grid(column=0, row=3)
+    entry_banco = ttk.Entry(frm)
+    entry_banco.grid(column=1, row=3)
+
+    ttk.Label(frm, text='VENCIMIENTO').grid(column=0, row=4)
+    entry_vencimiento = ttk.Entry(frm)
+    entry_vencimiento.grid(column=1, row=4)
+    boton_enviar = ttk.Button(frm, text='ENVIAR', command=enviar_tarjeta)
+    boton_enviar.grid(column=1, row=7)
 
 ######################################### MAIN ############################################################
 def main():
     def verificar_usuario():
+        global password
         usuario_ingresado = entry_usuario.get()
         psw_ingresado = entry_psw.get()
         pswReal = extraer_personal_pverificar(usuario_ingresado)
-        print(pswReal)
-        print('hola')
         if pswReal == 'NO INFO':
             messagebox.showinfo('ERROR', 'NO COINCIDE NINGUN USUARIO')
         elif pswReal == 'ERROR':
             messagebox.showinfo('ERROR', 'ERROR DB')
         elif psw_ingresado == desencriptador(pswReal[0][0]):
+            password = desencriptador(pswReal[0][0])
             if pswReal[0][1] == 'ADMINISTRADOR':
                 boton_altaPersonal.config(state='enable')
                 boton_altaTaller.config(state='enable')
@@ -1438,6 +1500,8 @@ def main():
                 boton_gastoIngreso.config(state='enable')
                 boton_inscribirCliente.config(state='enable')
                 boton_pagoCliente.config(state='enable')
+                boton_pagoCliente.config(state='enable')
+                boton_altaTarjeta.config(state='enable')
             elif pswReal[0][1] == 'USUARIO':
                 #boton_altaPersonal.config(state='enable')
                 #boton_altaTaller.config(state='enable')
@@ -1447,6 +1511,7 @@ def main():
                 #boton_gastoIngreso.config(state='enable')
                 boton_inscribirCliente.config(state='enable')
                 boton_pagoCliente.config(state='enable')
+                #boton_altaTarjeta.config(state='enable')
             else:
                 messagebox.showinfo('ERROR', 'Error en variable pswReal[0][1]')
         
@@ -1468,21 +1533,23 @@ def main():
     entry_psw = ttk.Entry(frm, show='*')
     entry_psw.grid(column=3, row=2)
     ttk.Button(frm, text='ENTER', command=verificar_usuario).grid(column=4, row=2)
-    boton_altaTaller = ttk.Button(frm, text="DAR DE ALTA TALLER", command=ventana_alta_taller, state='disable')
+    boton_altaTaller = ttk.Button(frm, text="DAR DE ALTA TALLER", command=ventana_alta_taller)
     boton_altaTaller.grid(column=1, row=3)
-    boton_bajaTaller = ttk.Button(frm, text="DAR DE BAJA TALLER", command=ventana_baja_taller, state='disable')
+    boton_bajaTaller = ttk.Button(frm, text="DAR DE BAJA TALLER", command=ventana_baja_taller)
     boton_bajaTaller.grid(column=1, row=4)
-    boton_consultaTaller = ttk.Button(frm, text="CONSULTAR TALLER", command=ventana_consultar_taller, state='disable')
+    boton_consultaTaller = ttk.Button(frm, text="CONSULTAR TALLER", command=ventana_consultar_taller)
     boton_consultaTaller.grid(column=1, row=5)
-    boton_inscribirCliente = ttk.Button(frm, text="INSCRIBIR CLIENTE", command=ventana_inscribir_cliente, state='disable')
+    boton_inscribirCliente = ttk.Button(frm, text="INSCRIBIR CLIENTE", command=ventana_inscribir_cliente)
     boton_inscribirCliente.grid(column=2, row=3)
-    boton_buscarCliente = ttk.Button(frm, text="BUSCAR CLIENTE", command=ventana_buscar_cliente, state='disable')
+    boton_buscarCliente = ttk.Button(frm, text="BUSCAR CLIENTE", command=ventana_buscar_cliente)
     boton_buscarCliente.grid(column=2, row=4)
-    boton_pagoCliente = ttk.Button(frm, text="PAGO CLIENTE", command=ventana_pago_cliente, state='disable')
+    boton_pagoCliente = ttk.Button(frm, text="PAGO CLIENTE", command=ventana_pago_cliente)
     boton_pagoCliente.grid(column=2, row=5)
-    boton_gastoIngreso = ttk.Button(frm, text="ALTA GASTO/INGRESO", command=ventana_ingresar_gasto_ingreso, state='disable')
+    boton_gastoIngreso = ttk.Button(frm, text="ALTA GASTO/INGRESO", command=ventana_ingresar_gasto_ingreso)
     boton_gastoIngreso.grid(column=3, row=3)
-    boton_altaPersonal = ttk.Button(frm, text="ALTA PERSONAL", command=ventana_alta_personal, state='disable')
+    boton_altaTarjeta = ttk.Button(frm, text="ALTA TARJETA", command=ventana_alta_tarjeta)
+    boton_altaTarjeta.grid(column=3, row=4)
+    boton_altaPersonal = ttk.Button(frm, text="ALTA PERSONAL", command=ventana_alta_personal)
     boton_altaPersonal.grid(column=4, row=3)
     ttk.Button(frm, text="CERRAR", command=root.destroy).grid(column=1, row=8)
     #HOLA
