@@ -125,3 +125,23 @@ def desencriptador(psswr):
 
     passwr = ''.join(desencriptado)
     return passwr
+
+############ verificador numero de telefono correcto
+def verificadorCel(n):
+    if len(n) == 10:
+        if solonumeros(n):
+            return True
+        else:
+            return False
+    else:
+        return False
+
+########### DAR FORMATO A TARJETAS
+def formato_a_tarjetas(info):
+    info_lista = []
+    for i in info:
+        lista = list(i)
+        x = '-'.join(lista)
+        info_lista.append(x)
+    return info_lista
+

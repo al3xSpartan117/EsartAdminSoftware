@@ -210,7 +210,7 @@ def enviar_cliente_bd(info):
     
     cursor = conexion.cursor()
     try:
-        comando = f'INSERT INTO clientes(nombre, apellido, taller, pagado) values(%s,%s,%s,%s)'
+        comando = f'INSERT INTO clientes(nombre, apellido, taller, pagado, celular) values(%s,%s,%s,%s, %s)'
         cursor.execute(comando, info)
     except mysql.connector.Error as Error:
         print(Error)
@@ -281,26 +281,39 @@ def modificar_pagado_db(cliente, pago):
 
 
 ################### ENVIAR GASTO O INGRESO ############
-def enviar_gasto_ingreso_db(info):
+def enviar_gasto_ingreso_db(info, op=1):
     conexion = mysql.connector.connect( host='localhost',
                                         user='root',
                                         passwd='',
                                         database='esart')
 
     cursor = conexion.cursor()
-    try:
-        comando = f'INSERT INTO gastos (descripcion, tipo, monto, area, zona, dia, mes, anio) values (%s, %s, %s, %s, %s, %s, %s, %s)'
-        cursor.execute(comando, info)
-        return True
-    except mysql.connector.Error as error:
-        print('ERROR AL ENVIAR COMANDO EN enviar_gasto_ingreso_db')
-        print(error)
-        return False
-    finally:
-        conexion.commit()
-        cursor.close()
-        conexion.close()
-
+    if op == 1:
+        try:
+            comando = f'INSERT INTO gastos (descripcion, tipo, monto, area, zona, dia, mes, anio) values (%s, %s, %s, %s, %s, %s, %s, %s)'
+            cursor.execute(comando, info)
+            return True
+        except mysql.connector.Error as error:
+            print('ERROR AL ENVIAR COMANDO EN enviar_gasto_ingreso_db')
+            print(error)
+            return False
+        finally:
+            conexion.commit()
+            cursor.close()
+            conexion.close()
+    elif op == 2:
+        try:
+            comando = f'INSERT INTO gastos (descripcion, tipo, monto, metodo, area, zona, dia, mes, anio) values (%s, %s, %s, %s, %s, %s, %s, %s, %s)'
+            cursor.execute(comando, info)
+            return True
+        except mysql.connector.Error as error:
+            print('ERROR AL ENVIAR COMANDO EN enviar_gasto_ingreso_db')
+            print(error)
+            return False
+        finally:
+            conexion.commit()
+            cursor.close()
+            conexion.close()
 
 ###########    EXTRAER CLIENTE RECIEN DADO DE ALTA #####
         
@@ -386,6 +399,46 @@ def extraer_personal():
         resultado = cursor.fetchall()
         if resultado:
             return resultado
+        else:
+            return 'NO INFO'
+    except mysql.connector.Error as error:
+        print(error)
+        return 'ERROR'
+    finally:
+        conexion.commit()
+        cursor.close()
+        conexion.close()
+
+################ ENVIAR TARJETA
+        
+def enviar_tarjeta_bd(info):
+    conexion = mysql.connector.connect(host='localhost', user='root', passwd='', database='esart')
+    cursor = conexion.cursor()
+
+    try:
+        comando = f'INSERT INTO tarjetas (titular, digitos, banco, vencimiento) VALUES (%s,%s,%s,%s)'
+        cursor.execute(comando, info)
+        return True
+    except mysql.connector.Error as error:
+        print(error)
+        return 'ERROR'
+    finally:
+        conexion.commit()
+        cursor.close()
+        conexion.close()
+
+################# EXTRAER TARJETAS
+        
+def extraer_tarjetas_bd():
+    conexion = mysql.connector.connect(host='localhost', user='root', passwd='', database='esart')
+    cursor = conexion.cursor()
+
+    try:
+        comando = f'SELECT digitos, banco FROM tarjetas'
+        cursor.execute(comando)
+        informacion = cursor.fetchall()
+        if informacion:
+            return informacion
         else:
             return 'NO INFO'
     except mysql.connector.Error as error:
