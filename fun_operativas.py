@@ -1,5 +1,5 @@
-from sendfun import *
-from index import *
+
+import sendfun
 
 def comparador(p1,p2):
     x_len = len(p1)
@@ -145,3 +145,78 @@ def formato_a_tarjetas(info):
         info_lista.append(x)
     return info_lista
 
+########### FUNCION INFORMACION PARA RENDIMIENTO DE TALLER
+#VARIEBLE QUE GUARDE TODOS LOS GASTOS DEL TALLER
+def informacion_rendimiento(taller):
+    from sendfun import extraer_disponibilidad_bd
+    from sendfun import extraer_informacion_gastos_db
+    monto_total_gastos = extraer_informacion_gastos_db(['taller',taller,'g'])
+    monto_total_ingresos = extraer_informacion_gastos_db(['taller',taller,'i'])
+    disponibilidad = extraer_disponibilidad_bd(taller)
+    print(f'INGRESO ES:{monto_total_ingresos} y el gasto es {monto_total_gastos}')
+    try:
+        ganancia = monto_total_ingresos-monto_total_gastos
+    except TypeError:
+        pass
+    rendimiento = calcular_porcentaje_rendimiento_taller(monto_total_ingresos, monto_total_gastos)
+    return [monto_total_gastos, monto_total_ingresos, ganancia, rendimiento, disponibilidad[0][0]]
+
+def informacion_rendimiento_talleres(info):#Funcion que recibe lista de tuplas con talleres y obtiene el rendimiento de cada taller y lo agrega a la lista rendimientos[]
+    rendimientos = []
+    for i in info:
+        x = informacion_rendimiento(i[0])
+        rendimientos.append(x)
+    return rendimientos
+
+################ CALCULAR PORCENTAJES DE RENDIMIENTO DE TALLER
+def calcular_porcentaje_rendimiento_taller(ingresos, gastos):
+    try:
+        unoporciento = ingresos/100
+        porcentaje_gastos = gastos/unoporciento
+        rendimiento_real = 100-porcentaje_gastos
+    except ZeroDivisionError:
+        return 'NO INFO' #LOS 0s vienen de que no se encontraron gastos ni ingresos en la tabla gastos
+    return round(rendimiento_real, 2)
+
+################ DAR FORMATO A LISTA DE TUPLA DE CLIENTES PARA TRANSFERIR EXCEDENTES
+def formato_a_clientes(info):
+    clientes = []
+    for i in info:
+        i = list(i)
+        c = f'{i[0]}-{i[1]} {i[2]}-{i[3]}'
+        clientes.append(c)
+    return clientes
+################ Calcular el excedente de un cliente
+def calcular_excedente(cliente, taller):
+    from sendfun import extraer_costo_bd
+    from sendfun import extraer_pagosTotal_clientes
+    costo = extraer_costo_bd(taller)
+    pagado = extraer_pagosTotal_clientes(cliente, taller)
+    excedente = float(costo[0][0])-float(pagado)
+    return excedente
+
+############### CALCULOS SOBRE RENDIMIENTO DE TALLERES
+
+def calculo_rendimientos_talleres(info):#RECIBIMOS LA LISTA DE TUPLAS QUE RETORNA informacion_rendimientos_talleres()
+    #[monto_total_gastos, monto_total_ingresos, ganancia, rendimiento, disponibilidad[0][0]] informacion por tupla
+    gastos_total = 0
+    ingreso_total = 0
+    ganancia_total = 0
+    rendimiento_total = 0
+    contador_talleres=0
+    for i in info: 
+        gasto = i[0]
+        ingreso = i[1]
+        ganancia = i[2]
+        rendimiento = i[3]
+        gastos_total+=gasto
+        ingreso_total+=ingreso
+        ganancia_total+=ganancia
+        if rendimiento == 'NO INFO':
+            contador_talleres-=1
+            pass
+        else:
+            rendimiento_total+=rendimiento
+        contador_talleres+=1
+    rendimiento_promedio = rendimiento_total/contador_talleres
+    return [gastos_total, ingreso_total, ganancia_total, round(rendimiento_promedio, 2)]
