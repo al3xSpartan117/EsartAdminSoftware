@@ -554,7 +554,7 @@ def extraer_cliente_pCelular__bd(cel):
         cursor.close()
         conexion.close()
 
-def extraer_talleres_rangoFechas(info):
+def extraer_talleres_rangoFechas_db(info):
     conexion = mysql.connector.connect(
         host="localhost",
         user="root",
@@ -574,6 +574,54 @@ def extraer_talleres_rangoFechas(info):
 
     # Construir la consulta SQL
     consulta = ("SELECT * FROM cursos "
+            "WHERE STR_TO_DATE(CONCAT(anio, '-', mes, '-', dia), '%Y-%m-%d') "
+            "BETWEEN %(inicio)s AND %(fin)s")
+
+# Ejecutar la consulta con los parámetros
+    
+
+    try:
+        # Ejecutar la consulta SQL con los parámetros de las fechas
+        cursor.execute(consulta, {'inicio': f"{anio_inicio}-{mes_inicio}-{dia_inicio}",
+                                    'fin': f"{anio_fin}-{mes_fin}-{dia_fin}"})
+
+        # Obtener los resultados
+        resultados = cursor.fetchall()
+
+        if resultados:
+            return resultados
+        else:
+            return 'NO INFO'
+    except mysql.connector.Error as error:
+        print(error)
+        return 'ERROR'
+    finally:
+        # Cerrar cursor y conexión
+        conexion.commit()
+        cursor.close()
+        conexion.close()
+
+############################## EXTRAER GASTOS INGRESOS 
+def extraer_gastoIngreso_rangoFechas_db(info):
+    conexion = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        passwd="",
+        database="esart"
+    )
+    cursor = conexion.cursor()
+
+    # Obtener las fechas de inicio y fin del usuario
+    dia_inicio = info[0]
+    mes_inicio = info[1]
+    anio_inicio = info[2]
+
+    dia_fin = info[3]
+    mes_fin = info[4]
+    anio_fin = info[5]
+
+    # Construir la consulta SQL
+    consulta = ("SELECT * FROM gastos "
             "WHERE STR_TO_DATE(CONCAT(anio, '-', mes, '-', dia), '%Y-%m-%d') "
             "BETWEEN %(inicio)s AND %(fin)s")
 

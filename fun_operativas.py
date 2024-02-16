@@ -30,7 +30,6 @@ def comparador(p1,p2):
     else:
         return False
 
-    
 def buscador_de_coincidencias(info, nombre_in, apellido_in):
     coincidencias = []
     for i in range(0,len(info)):
@@ -220,3 +219,53 @@ def calculo_rendimientos_talleres(info):#RECIBIMOS LA LISTA DE TUPLAS QUE RETORN
         contador_talleres+=1
     rendimiento_promedio = rendimiento_total/contador_talleres
     return [gastos_total, ingreso_total, ganancia_total, round(rendimiento_promedio, 2)]
+
+###############FUNCION PARA DAR FORMATO A DATOS Y MOSTRARLOS EN EXCEL
+
+def formato_excel_tablas(info, op):
+    if op == 'clientes':
+        clientes = []
+        for i in info:
+            dic = {'Codigo':i[0], 'Nombre':i[1], 'Apellido':i[2], 'Taller':i[3], 'Pagado':i[4], 'celular':i[5]}
+            clientes.append(dic)
+        return clientes
+    elif op == 'gastos':
+        gastos = []
+        for i in info:
+            fecha = f'{i[7]}-{i[8]}-{i[9]}'
+            dic = {'ID':i[0], 'Descripcion':i[1], 'Tipo':i[2], 'Monto':i[3], 'Metodo':i[4], 'Area':i[5], 'Zona':i[6], 'Fecha':fecha}
+            gastos.append(dic)
+        return gastos
+    elif op == 'cursos':
+        gastos = []
+        for i in info:
+            dic = {'Codigo':i[0], 'Nombre':i[1], 'Apellido':i[2], 'Taller':i[3], 'Pagado':i[4], 'celular':i[5]}
+            gastos.append(dic)
+        return gastos
+
+
+def calcular_rendimiento_general(info):
+    monto_total_gasto = 0
+    monto_total_ingreso = 0
+    ganancia_total = 0
+    for i in info:
+        if i[2] == 'i':
+            monto_total_ingreso += i[3]
+        elif i[2] == 'g':
+            monto_total_gasto += i[3]
+        else:
+            pass
+    ganancia_total=monto_total_ingreso-monto_total_gasto
+
+    if monto_total_ingreso==0:
+        return [monto_total_ingreso, monto_total_gasto, ganancia_total, 'CRITICO']
+    elif monto_total_gasto==0:
+        return [monto_total_ingreso, monto_total_gasto, ganancia_total, 100]
+    elif monto_total_gasto == 0 and monto_total_ingreso == 0:
+        return ['NO INFO', 'NO INFO', 'N/A', 'N/A']
+    else:
+        rendimiento = 100-(monto_total_gasto/(monto_total_ingreso/100))
+        
+
+    return [monto_total_ingreso, monto_total_gasto, ganancia_total, round(rendimiento, 2)]
+    

@@ -7,6 +7,8 @@ import tkinter as tk
 from datetime import datetime
 from tkcalendar import Calendar
 from tkinter import messagebox
+import funExcel
+
 
 global password
 
@@ -1850,7 +1852,8 @@ def ventana_trasnferir_exedente():
 ########################################## VENTANA RENDIMIENTO TALLERES ##############################
     
 def ventana_rendimiento_talleres():
-
+    global labels_creados3
+    labels_creados3=[]
     def boton_calcular_comando():
         dia_inicio = combobox_dia1.get()
         mes_inicio = combobox_mes1.get()
@@ -1872,7 +1875,7 @@ def ventana_rendimiento_talleres():
                          'Diciembre':'12',}
         fechas_lista = [dia_inicio, mes_en_numero[mes_inicio], anio_inicio, dia_fin, mes_en_numero[mes_fin], anio_fin]
         if verificar_campos_vacios(fechas_lista):
-            clientes = extraer_talleres_rangoFechas(fechas_lista)
+            clientes = extraer_talleres_rangoFechas_db(fechas_lista)
             if clientes == 'NO INFO':
                 indicador = ttk.Label(frm, text='NO INFO', background='red')
                 frm.after(3000, lambda: indicador.grid_remove())
@@ -1883,12 +1886,36 @@ def ventana_rendimiento_talleres():
                 indicador.grid(column=3, row=1)
             else:
                 info_rendimientos = informacion_rendimiento_talleres(clientes)#[monto_total_gastos, monto_total_ingresos, ganancia, rendimiento, disponibilidad[0][0]]
-                print(calculo_rendimientos_talleres(info_rendimientos))
+                rendimiento_global = calculo_rendimientos_talleres(info_rendimientos)
+                indicador_ingresos = ttk.Label(frm, text='INGRESOS')
+                indicador_ingresos.grid(column=0, row=4)
+                labels_creados3.append(indicador_ingresos)
+                indicador_gastos = ttk.Label(frm, text='GASTOS')
+                indicador_gastos.grid(column=1, row=4)
+                labels_creados3.append(indicador_gastos)
+                indicador_ganancia = ttk.Label(frm, text='GANANCIA')
+                indicador_ganancia.grid(column=2, row=4)
+                labels_creados3.append(indicador_ganancia)
+                indicador_rendimiento = ttk.Label(frm, text='RENDIMIENTO')
+                indicador_rendimiento.grid(column=3, row=4)
+                labels_creados3.append(indicador_rendimiento)
+                ########################################
+                label_ingresos = ttk.Label(frm, text=rendimiento_global[1])
+                label_ingresos.grid(column=0, row=5)
+                labels_creados3.append(label_ingresos)
+                label_gastos = ttk.Label(frm, text=rendimiento_global[0])
+                label_gastos.grid(column=1, row=5)
+                labels_creados3.append(label_gastos)
+                label_ganancia = ttk.Label(frm, text=rendimiento_global[2])
+                label_ganancia.grid(column=2, row=5)
+                labels_creados3.append(label_ganancia)
+                label_rendimiento = ttk.Label(frm, text=rendimiento_global[3])
+                label_rendimiento.grid(column=3, row=5)
+                labels_creados3.append(label_rendimiento)
+
+                
 
 
-
-
-        
 
     global width_rendimiento 
     width_rendimiento = 10
@@ -1897,6 +1924,111 @@ def ventana_rendimiento_talleres():
     frm.place(x=100, y=100)
     frm.grid()
     ttk.Label(frm, text='RENDIMIENTO TALLERES').grid(column=0,row=0)
+    ttk.Label(frm, text='Periodo').grid(column=0,row=1)
+    ttk.Label(frm, text='De:').grid(column=0, row=2)
+    dias = []
+    for i in range(1,32):
+        dias.append(str(i))
+    meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+    anios = ['2024', '2025', '2026', '2027', '2028', '2029', '2030']
+    combobox_dia1 = ttk.Combobox(frm, width=width_rendimiento, values=dias, state='readonly')
+    combobox_dia1.grid(column=1,row=2)
+    combobox_mes1 = ttk.Combobox(frm,width=width_rendimiento, values=meses, state='readonly')
+    combobox_mes1.grid(column=2,row=2)
+    combobox_anio1 = ttk.Combobox(frm,width=width_rendimiento, values=anios, state='readonly')
+    combobox_anio1.grid(column=3,row=2)
+    ttk.Label(frm, text='A:').grid(column=0, row=3)
+    combobox_dia2 = ttk.Combobox(frm,width=width_rendimiento, values=dias, state='readonly')
+    combobox_dia2.grid(column=1,row=3)
+    combobox_mes2 = ttk.Combobox(frm,width=width_rendimiento, values=meses, state='readonly')
+    combobox_mes2.grid(column=2,row=3)
+    combobox_anio2 = ttk.Combobox(frm,width=width_rendimiento, values=anios, state='readonly')
+    combobox_anio2.grid(column=3,row=3)
+    boton_calcular = ttk.Button(frm, text='Calcular', command=boton_calcular_comando)
+    boton_calcular.grid(column=4, row=3)
+
+######################################### VENTANA RENDIMIENTO GENERAL #################################
+    
+def ventana_rendimiento_general():
+    global labels_creados4
+    global gastosIngresos_extraidos
+    labels_creados4=[]
+    def boton_calcular_comando():
+        global gastosIngresos_extraidos
+        dia_inicio = combobox_dia1.get()
+        mes_inicio = combobox_mes1.get()
+        anio_inicio = combobox_anio1.get()
+        dia_fin = combobox_dia2.get()
+        mes_fin = combobox_mes2.get()
+        anio_fin = combobox_anio2.get()
+        mes_en_numero = {'Enero':'01', 
+                         'Febrero':'02',
+                         'Marzo':'03',
+                         'Abril':'04',
+                         'Mayo':'05',
+                         'Junio':'06',
+                         'Julio':'07',
+                         'Agosto':'08',
+                         'Septiembre':'09',
+                         'Octubre':'10',
+                         'Noviembre':'11',
+                         'Diciembre':'12',}
+        fechas_lista = [dia_inicio, mes_en_numero[mes_inicio], anio_inicio, dia_fin, mes_en_numero[mes_fin], anio_fin]
+        if verificar_campos_vacios(fechas_lista):
+            gastos_ingresos = extraer_gastoIngreso_rangoFechas_db(fechas_lista)
+            gastosIngresos_extraidos = gastos_ingresos
+            if gastos_ingresos == 'NO INFO':
+                indicador = ttk.Label(frm, text='NO INFO', background='red')
+                frm.after(3000, lambda: indicador.grid_remove())
+                indicador.grid(column=3, row=1)
+            elif gastos_ingresos == 'ERROR':
+                indicador = ttk.Label(frm, text='DB ERROR', background='red')
+                frm.after(3000, lambda: indicador.grid_remove())
+                indicador.grid(column=3, row=1)
+            else:
+                rendimiento_global = calcular_rendimiento_general(gastos_ingresos)#[monto_total_gastos, monto_total_ingresos, ganancia, rendimiento, disponibilidad[0][0]]
+                if rendimiento_global == 'NO INFO':
+                    messagebox.showerror('ERROR', 'LOS GASTOS O LOS INGRESOS SON 0 LO CUAL NO PERMITE QUE EL')
+                indicador_ingresos = ttk.Label(frm, text='INGRESOS')
+                indicador_ingresos.grid(column=0, row=4)
+                labels_creados4.append(indicador_ingresos)
+                indicador_gastos = ttk.Label(frm, text='GASTOS')
+                indicador_gastos.grid(column=1, row=4)
+                labels_creados4.append(indicador_gastos)
+                indicador_ganancia = ttk.Label(frm, text='GANANCIA')
+                indicador_ganancia.grid(column=2, row=4)
+                labels_creados4.append(indicador_ganancia)
+                indicador_rendimiento = ttk.Label(frm, text='RENDIMIENTO')
+                indicador_rendimiento.grid(column=3, row=4)
+                labels_creados4.append(indicador_rendimiento)
+                ########################################
+                label_ingresos = ttk.Label(frm, text=rendimiento_global[0])
+                label_ingresos.grid(column=0, row=5)
+                labels_creados4.append(label_ingresos)
+                label_gastos = ttk.Label(frm, text=rendimiento_global[1])
+                label_gastos.grid(column=1, row=5)
+                labels_creados4.append(label_gastos)
+                label_ganancia = ttk.Label(frm, text=rendimiento_global[2])
+                label_ganancia.grid(column=2, row=5)
+                labels_creados4.append(label_ganancia)
+                label_rendimiento = ttk.Label(frm, text=rendimiento_global[3])
+                label_rendimiento.grid(column=3, row=5)
+                labels_creados4.append(label_rendimiento)
+                boton_generar_excel = ttk.Button(frm, text='Generar excel', command = boton_generar_excel_comando)
+                boton_generar_excel.grid(column=3, row=6)
+                
+    def boton_generar_excel_comando():
+        info_excel_formateada = formato_excel_tablas(gastosIngresos_extraidos, 'gastos')
+        funExcel.generar_excel_tablas(info_excel_formateada, 'gastos')
+        
+
+    global width_rendimiento 
+    width_rendimiento = 10
+    ventana_secundaria = tk.Toplevel()
+    frm = ttk.Frame(ventana_secundaria, padding=50)
+    frm.place(x=100, y=100)
+    frm.grid()
+    ttk.Label(frm, text='RENDIMIENTO GENERAL').grid(column=0,row=0)
     ttk.Label(frm, text='Periodo').grid(column=0,row=1)
     ttk.Label(frm, text='De:').grid(column=0, row=2)
     dias = []
@@ -1997,6 +2129,8 @@ def main():
     boton_gastoIngreso.grid(column=3, row=3)
     boton_altaTarjeta = ttk.Button(frm, text="ALTA TARJETA", command=ventana_alta_tarjeta)
     boton_altaTarjeta.grid(column=3, row=4)
+    boton_rendimientoGeneral = ttk.Button(frm, text="RENDIMIENTO GENERAL", command=ventana_rendimiento_general)
+    boton_rendimientoGeneral.grid(column=3, row=5)
     boton_altaPersonal = ttk.Button(frm, text="ALTA PERSONAL", command=ventana_alta_personal)
     boton_altaPersonal.grid(column=4, row=3)
 
