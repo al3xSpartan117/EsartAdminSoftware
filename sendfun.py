@@ -448,3 +448,203 @@ def extraer_tarjetas_bd():
         conexion.commit()
         cursor.close()
         conexion.close()
+
+#########EXTRAER INFORMACION GASTOS
+def extraer_informacion_gastos_db(info, op=0):
+    conexion = mysql.connector.connect(host='localhost', user='root', passwd='', database='esart')
+    cursor = conexion.cursor()
+    if op == 0:
+        try:
+            comando = f'SELECT monto FROM gastos WHERE area=%s and zona=%s and tipo=%s'
+            cursor.execute(comando, (info))
+            informacion = cursor.fetchall()
+            print(informacion)
+            if informacion:
+                total = 0.0
+                for i in informacion:
+                    total+=float(i[0])
+                return total    
+            else:
+                return 0
+        except mysql.connector.Error as error:
+            print(error)
+            return 'ERROR'
+        finally:
+            conexion.commit()
+            cursor.close()
+            conexion.close()
+
+################### EXTRAER DISPONIBILIDAD
+            
+def extraer_disponibilidad_bd(codigo):   #TAMBIEN SE UTILIZA EN CONSULTAR TALLER
+    conexion=mysql.connector.connect(host="localhost", 
+                                  user="root", 
+                                  passwd="", 
+                                  database="esart")
+    
+    cursor = conexion.cursor()
+    try:
+        comando = f'SELECT disponibilidad FROM cursos WHERE codigo = %s'
+        cursor.execute(comando, (codigo,))
+        costo = cursor.fetchall()
+        if costo:
+            return costo
+        else:
+            return 'NOT FOUND'
+
+    except mysql.connector.Error as Error:
+        print(Error)
+        return 'ERROR'
+    finally:
+        conexion.commit()
+        cursor.close()
+        conexion.close()
+
+
+########################
+def extraer_pagosTotal_clientes(codigo, taller):
+    conexion=mysql.connector.connect(host="localhost", 
+                              user="root", 
+                              passwd="", 
+                              database="esart")
+    
+    cursor = conexion.cursor()
+    try:
+        comando = f'SELECT monto FROM gastos WHERE descripcion = %s AND area=%s and zona=%s'
+        cursor.execute(comando, (codigo,'taller',int(taller)))
+        montos = cursor.fetchall()
+        if montos:
+            montoTotal = 0
+            for i in montos:
+                montoTotal += i[0]
+            return montoTotal
+        else:
+            return 'NOT FOUND'
+
+    except mysql.connector.Error as Error:
+        print(Error)
+        return 'ERROR'
+    finally:
+        conexion.commit()
+        cursor.close()
+        conexion.close()
+
+#print(extraer_pagos_clientes(17,24))
+        
+def extraer_cliente_pCelular__bd(cel):
+    conexion = mysql.connector.connect(host="localhost", 
+                                  user="root", 
+                                  passwd="", 
+                                  database="esart")
+    cursor = conexion.cursor()
+
+    try:
+        comando = f'SELECT * FROM clientes WHERE celular = %s'
+        cursor.execute(comando, (cel,))
+        resultado = cursor.fetchall()
+        if resultado:
+            return resultado
+        else:
+            return 'NO INFO'
+    except mysql.connector.Error as error:
+        print(error)
+        return 'ERROR'
+    finally:
+        conexion.commit()
+        cursor.close()
+        conexion.close()
+
+def extraer_talleres_rangoFechas_db(info):
+    conexion = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        passwd="",
+        database="esart"
+    )
+    cursor = conexion.cursor()
+
+    # Obtener las fechas de inicio y fin del usuario
+    dia_inicio = info[0]
+    mes_inicio = info[1]
+    anio_inicio = info[2]
+
+    dia_fin = info[3]
+    mes_fin = info[4]
+    anio_fin = info[5]
+
+    # Construir la consulta SQL
+    consulta = ("SELECT * FROM cursos "
+            "WHERE STR_TO_DATE(CONCAT(anio, '-', mes, '-', dia), '%Y-%m-%d') "
+            "BETWEEN %(inicio)s AND %(fin)s")
+
+# Ejecutar la consulta con los parámetros
+    
+
+    try:
+        # Ejecutar la consulta SQL con los parámetros de las fechas
+        cursor.execute(consulta, {'inicio': f"{anio_inicio}-{mes_inicio}-{dia_inicio}",
+                                    'fin': f"{anio_fin}-{mes_fin}-{dia_fin}"})
+
+        # Obtener los resultados
+        resultados = cursor.fetchall()
+
+        if resultados:
+            return resultados
+        else:
+            return 'NO INFO'
+    except mysql.connector.Error as error:
+        print(error)
+        return 'ERROR'
+    finally:
+        # Cerrar cursor y conexión
+        conexion.commit()
+        cursor.close()
+        conexion.close()
+
+############################## EXTRAER GASTOS INGRESOS 
+def extraer_gastoIngreso_rangoFechas_db(info):
+    conexion = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        passwd="",
+        database="esart"
+    )
+    cursor = conexion.cursor()
+
+    # Obtener las fechas de inicio y fin del usuario
+    dia_inicio = info[0]
+    mes_inicio = info[1]
+    anio_inicio = info[2]
+
+    dia_fin = info[3]
+    mes_fin = info[4]
+    anio_fin = info[5]
+
+    # Construir la consulta SQL
+    consulta = ("SELECT * FROM gastos "
+            "WHERE STR_TO_DATE(CONCAT(anio, '-', mes, '-', dia), '%Y-%m-%d') "
+            "BETWEEN %(inicio)s AND %(fin)s")
+
+# Ejecutar la consulta con los parámetros
+    
+
+    try:
+        # Ejecutar la consulta SQL con los parámetros de las fechas
+        cursor.execute(consulta, {'inicio': f"{anio_inicio}-{mes_inicio}-{dia_inicio}",
+                                    'fin': f"{anio_fin}-{mes_fin}-{dia_fin}"})
+
+        # Obtener los resultados
+        resultados = cursor.fetchall()
+
+        if resultados:
+            return resultados
+        else:
+            return 'NO INFO'
+    except mysql.connector.Error as error:
+        print(error)
+        return 'ERROR'
+    finally:
+        # Cerrar cursor y conexión
+        conexion.commit()
+        cursor.close()
+        conexion.close()

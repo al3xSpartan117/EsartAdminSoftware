@@ -7,6 +7,8 @@ import tkinter as tk
 from datetime import datetime
 from tkcalendar import Calendar
 from tkinter import messagebox
+import funExcel
+
 
 global password
 
@@ -18,9 +20,10 @@ def ventana_ingresar_gasto_ingreso():
             fecha = elementos_creados[6].get_date()
             fecha_lista = fecha.split('/')
             fecha_formateada = enlistar_fecha(fecha_lista)
-            info = (elementos_creados[2].get(), 'i', elementos_creados[4].get(), op, 'extra', fecha_formateada[0], fecha_formateada[1], fecha_formateada[2])
+            metodoPago = elementos_creados[8].get()
+            info = (elementos_creados[2].get(), 'i', elementos_creados[4].get(), metodoPago, op, 'extra', fecha_formateada[0], fecha_formateada[1], fecha_formateada[2])
             if verificar_campos_vacios(info) and solonumeros(elementos_creados[4].get()):
-                estado_envio = enviar_gasto_ingreso_db(info)
+                estado_envio = enviar_gasto_ingreso_db(info, op=2)
                 if estado_envio == True:
                     print('SE HA ENVIADO LA INFORMACION')
                     indicador = ttk.Label(frm, text='ENVIADO', background='GREEN')
@@ -403,6 +406,12 @@ def ventana_ingresar_gasto_ingreso():
         boton_enviar = ttk.Button(frm, text='ENVIAR', command=lambda x=op: boton_enviar_funcion(op))
         boton_enviar.grid(column=0, row=5)
         elementos_creados.append(boton_enviar)#7 elementos creados
+        ######################## metodo de pago
+        metodos = extraer_tarjetas_bd()
+        metodos_lista = ['EFECTIVO'] + formato_a_tarjetas(metodos)
+        combobox_metodo = ttk.Combobox(frm, values=metodos_lista)
+        combobox_metodo.grid(column=2, row=3)
+        elementos_creados.append(combobox_metodo)
 
     ###########DEPENDIENDO DE LA OPCION SELECIONADA EN EL EN EL CBOX SECUNDARIO SE DECIDE QUE FUNCION SE EJECUTA
     def opcion_seleccionada_cboxsecundario(event):
@@ -572,22 +581,26 @@ def ventana_pago_cliente():
         global entrys_creados
         global combobox_creados
         info = entrys_creados[i].get()
-        x = modificar_pagado_db(cliente, info)
         metodo = combobox_creados[i].get()
-        if x == True:
-            fecha = datetime.now()
-            fecha_lista = [str(fecha.month), str(fecha.day), str(fecha.year)]
-            fecha_organizada = enlistar_fecha(fecha_lista, 'datetime')
-            informacion_ingreso = [cliente, 'i', info, metodo, 'taller', taller, fecha_organizada[0], fecha_organizada[1], fecha_organizada[2]]
-            enviar_gasto_ingreso_db(informacion_ingreso, op=2)
-            indicador = ttk.Label(frm, text='EXITO', background='green')
-            indicador.grid(column=8, row=4)
-            frm.after(2000, lambda: indicador.grid_remove())
-            comando_actualizar_info()
-        elif x == 'NO INFO':
-            indicador = ttk.Label(frm, text='NO INFO', background='red')
-            indicador.grid(column=8, row=4)
-            frm.after(1000, lambda: indicador.grid_remove())
+        metodo_lista = [metodo]
+        if verificar_campos_vacios(info) and verificar_campos_vacios(metodo_lista):
+            x = modificar_pagado_db(cliente, info)
+            if x == True:
+                fecha = datetime.now()
+                fecha_lista = [str(fecha.month), str(fecha.day), str(fecha.year)]
+                fecha_organizada = enlistar_fecha(fecha_lista, 'datetime')
+                informacion_ingreso = [cliente, 'i', info, metodo, 'taller', taller, fecha_organizada[0], fecha_organizada[1], fecha_organizada[2]]
+                enviar_gasto_ingreso_db(informacion_ingreso, op=2)
+                indicador = ttk.Label(frm, text='EXITO', background='green')
+                indicador.grid(column=9, row=4)
+                frm.after(2000, lambda: indicador.grid_remove())
+                comando_actualizar_info()
+            elif x == 'NO INFO':
+                indicador = ttk.Label(frm, text='NO INFO', background='red')
+                indicador.grid(column=8, row=4)
+                frm.after(1000, lambda: indicador.grid_remove())
+        else:
+            messagebox.showinfo('ERROR', 'EXISTE ERROR DE CAMPOS')
 
     def desplegar_informacion(info, costo):
             global labels_creados
@@ -622,7 +635,7 @@ def ventana_pago_cliente():
                 indicador_taller = ttk.Label(frm, text=info[i][3])
                 indicador_taller.grid(column= 3, row= i+5)
                 labels_creados.append(indicador_taller)
-                indicador_pagado = ttk.Label(frm, text=info[i][4])
+                indicador_pagado = ttk.Label(frm, text=extraer_pagosTotal_clientes(info[i][0], info[i][3]))
                 indicador_pagado.grid(column= 4, row= i+5)
                 labels_creados.append(indicador_pagado)
                 indicador_costo = ttk.Label(frm, text=costo)
@@ -634,9 +647,9 @@ def ventana_pago_cliente():
                 boton_pagar = ttk.Button(frm, text='PAGAR', command=lambda indice=i, cliente=info[i][0], taller=info[i][3]: comando_boton_pagar_bucle(indice, cliente, taller))
                 boton_pagar.grid(column=9, row=i+5)
                 botones_creados.append(boton_pagar)
-                faltante = float(costo[0][0])-float(info[i][4])
+                faltante = float(costo[0][0])-float(extraer_pagosTotal_clientes(info[i][0], info[i][3]))
                 conversion1 = float(costo[0][0])
-                conversion2 = float(info[i][4])
+                conversion2 = float(extraer_pagosTotal_clientes(info[i][0], info[i][3]))
                 total_taller += conversion1
                 total_pagado += conversion2
                 ultimo_label = i+5
@@ -752,11 +765,11 @@ def ventana_buscar_cliente():
         info = extraer_cliente_pcodigo__bd(codigo)
         if info == 'ERROR':
             indicadorError = ttk.Label(frm, text='ERROR', background='red')
-            indicadorError.grid(column=3, row=1)
+            indicadorError.grid(column=1, row=0)
             frm.after(3000, lambda: indicadorError.grid_remove())
         elif info == 'NO INFO':
             indicadorNoInfo = ttk.Label(frm, text='NO INFO', background='red')
-            indicadorNoInfo.grid(column=3, row=1)
+            indicadorNoInfo.grid(column=1, row=0)
             frm.after(3000, lambda: indicadorNoInfo.grid_remove())
         else:
              for i in range(len(info)):
@@ -797,8 +810,6 @@ def ventana_buscar_cliente():
                     indicador_celular = ttk.Label(frm, text=info[i][5])
                     indicador_celular.grid(column=7, row=i+5)
 
-
-
     def comando_boton_buscar_pNombre():
         global labels_creados
         try:
@@ -812,16 +823,18 @@ def ventana_buscar_cliente():
         info = extraer_nombres_bd()
         if info == 'ERROR':
             indicadorError = ttk.Label(frm, text='ERROR', background='red')
-            indicadorError.grid(column=3, row=3)
+            indicadorError.grid(column=1, row=0)
             frm.after(3000, lambda: indicadorError.grid_remove())
         elif info == 'NO INFO':
             indicadorNoInfo = ttk.Label(frm, text='NO INFO', background='red')
-            indicadorNoInfo.grid(column=3, row=3)
+            indicadorNoInfo.grid(column=1, row=0)
             frm.after(3000, lambda: indicadorNoInfo.grid_remove())
         else:
             coincidencias = buscador_de_coincidencias(info, nombre, apellido)
             if coincidencias == []:
-                print('SIN COINCIDENCIAS')
+                indicadorError = ttk.Label(frm, text='NO INFO', background='red')
+                indicadorError.grid(column=1, row=0)
+                frm.after(3000, lambda: indicadorError.grid_remove())
             else:
                 print(coincidencias)
                 for i in range(len(coincidencias)):
@@ -863,6 +876,57 @@ def ventana_buscar_cliente():
                         indicador_faltante.grid(column=6, row=i+5)
                         labels_creados.append(indicador_costo)
 
+    def comando_boton_buscar_pCelular():
+        global labels_creados
+        labels_creados = []
+        numero = entry_numero.get()
+        info = extraer_cliente_pCelular__bd(numero)
+        if info == 'ERROR':
+            indicadorError = ttk.Label(frm, text='ERROR', background='red')
+            indicadorError.grid(column=1, row=0)
+            frm.after(3000, lambda: indicadorError.grid_remove())
+        elif info == 'NO INFO':
+            indicadorNoInfo = ttk.Label(frm, text='NO INFO', background='red')
+            indicadorNoInfo.grid(column=1, row=0)
+            frm.after(3000, lambda: indicadorNoInfo.grid_remove())
+        else:
+             for i in range(len(info)):
+                indicador_codigo = ttk.Label(frm, text=info[i][0])
+                indicador_codigo.grid(column=0, row=i+6)
+                labels_creados.append(indicador_codigo)
+                indicador_nombre = ttk.Label(frm, text=info[i][1])
+                indicador_nombre.grid(column=1, row=i+6)
+                labels_creados.append(indicador_nombre)
+                indicador_apellido = ttk.Label(frm, text=info[i][2])
+                indicador_apellido.grid(column=2, row=i+6)
+                labels_creados.append(indicador_apellido)
+                indicador_taller = ttk.Label(frm, text=info[i][3])
+                indicador_taller.grid(column=3, row=i+6)
+                labels_creados.append(indicador_taller)
+                indicador_pagado = ttk.Label(frm, text=info[i][4])
+                indicador_pagado.grid(column=4, row=i+6)
+                labels_creados.append(indicador_pagado)
+                costo = extraer_costo_bd(info[i][3])
+                if costo == 'NOT FOUND':
+                    indicador_costo = ttk.Label(frm, text='NO INFO', background='red')
+                    indicador_costo.grid(column=5, row=i+6)
+                    labels_creados.append(indicador_costo)
+                elif costo == 'ERROR':
+                    indicador_costo = ttk.Label(frm, text='DB ERROR', background='red')
+                    indicador_costo.grid(column=5, row=i+6)
+                    labels_creados.append(indicador_costo)
+                else:
+                    indicador_costo = ttk.Label(frm, text=costo[0][0])
+                    indicador_costo.grid(column=5, row=i+6)
+                    labels_creados.append(indicador_costo)
+                    costo_float = float(costo[0][0])
+                    pagado_float = float(extraer_pagosTotal_clientes(info[i][0],info[i][3]))
+                    faltante = costo_float-pagado_float
+                    indicador_faltante = ttk.Label(frm, text=faltante)
+                    indicador_faltante.grid(column=6, row=i+6)
+                    labels_creados.append(indicador_costo)
+                    indicador_celular = ttk.Label(frm, text=info[i][5])
+                    indicador_celular.grid(column=7, row=i+6)
 
 
     ventana_secundaria = tk.Toplevel()
@@ -884,15 +948,20 @@ def ventana_buscar_cliente():
     entry_apellido.grid(column=2, row=3)
     bonton_buscar_NombreApellido = ttk.Button(frm, text='BUSCAR', command=comando_boton_buscar_pNombre)
     bonton_buscar_NombreApellido.grid(column=3, row=3)
+    ttk.Label(frm, text="POR CELULAR:").grid(column=0, row=4)
+    entry_numero = ttk.Entry(frm)
+    entry_numero.grid(column=1, row=4)
+    boton_buscar_numero = ttk.Button(frm, text='BUSCAR', command=comando_boton_buscar_pCelular)
+    boton_buscar_numero.grid(column=2, row=4)
     ####INDICADORES DE INFORMACION DE CLIENTE
-    ttk.Label(frm, text='CODIGO').grid(column=0,row=4)
-    ttk.Label(frm, text='NOMBRE').grid(column=1,row=4)
-    ttk.Label(frm, text='APELLIDO').grid(column=2,row=4)
-    ttk.Label(frm, text='TALLER').grid(column=3,row=4)
-    ttk.Label(frm, text='PAGADO').grid(column=4,row=4)
-    ttk.Label(frm, text='COSTO').grid(column=5,row=4)
-    ttk.Label(frm, text='FALTANTE').grid(column=6,row=4)
-    ttk.Label(frm, text='TELEFONO').grid(column=7,row=4)
+    ttk.Label(frm, text='CODIGO').grid(column=0,row=5)
+    ttk.Label(frm, text='NOMBRE').grid(column=1,row=5)
+    ttk.Label(frm, text='APELLIDO').grid(column=2,row=5)
+    ttk.Label(frm, text='TALLER').grid(column=3,row=5)
+    ttk.Label(frm, text='PAGADO').grid(column=4,row=5)
+    ttk.Label(frm, text='COSTO').grid(column=5,row=5)
+    ttk.Label(frm, text='FALTANTE').grid(column=6,row=5)
+    ttk.Label(frm, text='TELEFONO').grid(column=7,row=5)
 
 ############################################### CONSULTAR TALLER    ###############################################
 def ventana_consultar_taller():
@@ -990,46 +1059,61 @@ def ventana_consultar_taller():
             total_taller = 0.0
             total_pagado = 0.0
             total_faltante = 0.0
+            cantidad_clientes = 0
             for i in range(0, len(info)):
                 indicador_codigo = ttk.Label(frm, text=info[i][0],border=100)
                 indicador_codigo.grid(column= 0, row= i+5)
+                if ((i+5)%2)==0: indicador_codigo.configure(relief='groove')
                 labels_creados1.append(indicador_codigo)
                 indicador_nombre = ttk.Label(frm, text=info[i][1])
                 indicador_nombre.grid(column= 1, row= i+5)
+                if ((i+5)%2)==0: indicador_nombre.configure(relief='groove')
                 labels_creados1.append(indicador_nombre)
                 indicador_apellido = ttk.Label(frm, text=info[i][2])
                 indicador_apellido.grid(column= 2, row= i+5)
+                if ((i+5)%2)==0: indicador_apellido.configure(relief='groove')
                 labels_creados1.append(indicador_apellido)
                 indicador_taller = ttk.Label(frm, text=info[i][3])
                 indicador_taller.grid(column= 3, row= i+5)
+                if ((i+5)%2)==0: indicador_taller.configure(relief='groove')
                 labels_creados1.append(indicador_taller)
-                indicador_pagado = ttk.Label(frm, text=info[i][4])
+                indicador_pagado = ttk.Label(frm, text=extraer_pagosTotal_clientes(info[i][0],info[i][3]))
                 indicador_pagado.grid(column= 4, row= i+5)
+                if ((i+5)%2)==0: indicador_pagado.configure(relief='groove')
                 labels_creados1.append(indicador_pagado)
                 indicador_costo = ttk.Label(frm, text=costo)
                 indicador_costo.grid(column= 5, row= i+5)
+                if ((i+5)%2)==0: indicador_costo.configure(relief='groove')
                 labels_creados1.append(indicador_costo)
-                faltante = float(costo[0][0])-float(info[i][4])
+                try:
+                    faltante = float(costo[0][0])-float(extraer_pagosTotal_clientes(info[i][0],info[i][3]))
+                except ValueError:
+                    faltante = 0
                 conversion1 = float(costo[0][0])
-                conversion2 = float(info[i][4])
+                conversion2 = float(extraer_pagosTotal_clientes(info[i][0],info[i][3]))
                 total_taller += conversion1
                 total_pagado += conversion2
                 ultimo_label = i+5
                 if faltante <= 0:
                     indicador_faltante = ttk.Label(frm, text='PAGADO', background='green')
                     indicador_faltante.grid(column= 6, row= i+5)
+                    if ((i+5)%2)==0: indicador_faltante.configure(relief='groove')
                     labels_creados1.append(indicador_faltante)
                 else:
                     indicador_faltante = ttk.Label(frm, text=faltante)
                     indicador_faltante.grid(column= 6, row= i+5)
+                    if ((i+5)%2)==0: indicador_faltante.configure(relief='groove')
                     labels_creados1.append(indicador_faltante)
                     total_faltante += faltante
                 indicador_nombre2 = ttk.Label(frm, text=info[i][1])
                 indicador_nombre2.grid(column=7, row=i+5)
+                if ((i+5)%2)==0: indicador_nombre2.configure(relief='groove')
                 labels_creados1.append(indicador_nombre2)
                 indicador_telefono = ttk.Label(frm, text=info[i][5])
                 indicador_telefono.grid(column=8, row=i+5)
+                if ((i+5)%2)==0: indicador_telefono.configure(relief='groove')
                 labels_creados1.append(indicador_telefono)
+                cantidad_clientes += 1
             indicador_total_taller = ttk.Label(frm, text=total_taller, background='#add8e6')
             indicador_total_taller.grid(column= 5, row= ultimo_label+1)
             labels_creados1.append(indicador_total_taller)
@@ -1046,12 +1130,76 @@ def ventana_consultar_taller():
             boton_limpiar.grid(column=5, row=2)
             labels_creados1.append(boton_limpiar)
             boton_actualizar = ttk.Button(frm, text='ACTUALIZAR', command=comando_actualizar_info)
-            boton_actualizar.grid(column=5, row=2)
-            labels_creados1.append[boton_actualizar]#guardamos en labels en boton ya que no afecta el funcionamiento
+            boton_actualizar.grid(column=6, row=2)
+            labels_creados1.append(boton_actualizar)
+            try:
+             labels_creados1.append[boton_actualizar]#guardamos en labels en boton ya que no afecta el funcionamiento
+            except TypeError:
+                pass
+            ###########RENDIMIENTO TALLER
+            taller = mostrar_cursos_combobox.get()
+            taller_lista = taller.split('-')
+            rendimiento = informacion_rendimiento(taller_lista[0])#[monto_total_gastos, monto_total_ingresos, ganancia, rendimiento, disponibilidad[0][0]]
+            rendimiento = rendimiento + [cantidad_clientes]
+            label_rendimineto = ttk.Label(frm, text='RENDIMIENTO DE TALLER')
+            label_rendimineto.grid(column=0, row=ultimo_label+2)
+            labels_creados1.append(label_rendimineto)
+            label_ingresos = ttk.Label(frm, text='INGRESOS')
+            label_ingresos.grid(column=0, row=ultimo_label+3)
+            labels_creados1.append(label_ingresos)
+            label_gastos = ttk.Label(frm, text='GASTOS')
+            label_gastos.grid(column=1, row=ultimo_label+3)
+            labels_creados1.append(label_gastos)
+            label_disponibilidad = ttk.Label(frm, text='GANANCIA')
+            label_disponibilidad.grid(column=2, row=ultimo_label+3)
+            labels_creados1.append(label_disponibilidad)
+            label_disponibilidad = ttk.Label(frm, text='RENDIMIENTO %')
+            label_disponibilidad.grid(column=3, row=ultimo_label+3)
+            labels_creados1.append(label_disponibilidad)
+            label_disponibilidad = ttk.Label(frm, text='DISPONIBILIDAD')
+            label_disponibilidad.grid(column=4, row=ultimo_label+3)
+            labels_creados1.append(label_disponibilidad)
+            ############INFORMACION
+            label_ingresos_info = ttk.Label(frm, text=rendimiento[1])
+            label_ingresos_info.grid(column=0, row=ultimo_label+4)
+            labels_creados1.append(label_ingresos_info)
+            label_gastos_info = ttk.Label(frm, text=rendimiento[0])
+            label_gastos_info.grid(column=1, row=ultimo_label+4)
+            labels_creados1.append(label_gastos_info)
+            x = rendimiento[3]
+            if x < 0.0:
+                label_ganancia_info = ttk.Label(frm, text=rendimiento[2], background='red')
+                label_ganancia_info.grid(column=2, row=ultimo_label+4)
+                labels_creados1.append(label_ganancia_info)
+                label_rendimiento_info = ttk.Label(frm, text=round(rendimiento[3],2), background='red')
+                label_rendimiento_info.grid(column=3, row=ultimo_label+4)
+                labels_creados1.append(label_rendimiento_info)
+            elif x > 0.0 and x < 50.0:
+                label_ganancia_info = ttk.Label(frm, text=rendimiento[2], background='yellow')
+                label_ganancia_info.grid(column=2, row=ultimo_label+4)
+                labels_creados1.append(label_ganancia_info)
+                label_rendimiento_info = ttk.Label(frm, text=round(rendimiento[3],2), background='yellow')
+                label_rendimiento_info.grid(column=3, row=ultimo_label+4)
+                labels_creados1.append(label_rendimiento_info)
+            elif x > 49.00:
+                label_ganancia_info = ttk.Label(frm, text=rendimiento[2], background='green')
+                label_ganancia_info.grid(column=2, row=ultimo_label+4)
+                labels_creados1.append(label_ganancia_info)
+                label_rendimiento_info = ttk.Label(frm, text=round(rendimiento[3],2), background='green')
+                label_rendimiento_info.grid(column=3, row=ultimo_label+4)
+                labels_creados1.append(label_rendimiento_info)
+            else:
+                print(type(rendimiento[3]))
+                messagebox.showinfo('ERROR', 'CASO EXTRAÑO EN rendimiento[2]')
+            label_disponibilidad_info = ttk.Label(frm, text=f'{cantidad_clientes}/{rendimiento[4]}')
+            label_disponibilidad_info.grid(column=4, row=ultimo_label+4)
+            labels_creados1.append(label_disponibilidad_info)
+            ###########DESHABILITAR OPCIONES
             mes_combobox.config(state='disable')
             anio_combobox.config(state='disable')
             mostrar_cursos_combobox.config(state='disable')
             boton_buscar_pCodigo.config(state='disable')
+            boton_buscar.config(state='disable')
     
     def comando_buscar_tallerPCodigo():
         codigo = entry_codigo.get()
@@ -1098,7 +1246,7 @@ def ventana_consultar_taller():
     ttk.Label(frm, text='SELECCIONAR TALLER:').grid(column=4, row=1)
     boton_buscar = ttk.Button(frm, text="Buscar", command=buscar_curso_boton)
     boton_buscar.grid(column=3, row=2)
-    mostrar_cursos_combobox = ttk.Combobox(frm, state="disable", width=50)
+    mostrar_cursos_combobox = ttk.Combobox(frm, state="disable", width=20)
     mostrar_cursos_combobox.grid(column=4, row=2)
     mostrar_cursos_combobox.bind("<<ComboboxSelected>>", opcion_seleccionada_combobox)
     #BUSCAR POR CODIGO
@@ -1325,6 +1473,7 @@ def ventana_baja_taller():
     ttk.Button(frm, text="CERRAR", command=ventana_secundaria.destroy).grid(column=0, row=9)
 
 ########################################## DAR DE ALTA CURSO #####################################################
+
 def ventana_alta_taller(): 
     def enviar_curso_a_bd():
         nombre_curso = entry_nombre.get()
@@ -1342,12 +1491,15 @@ def ventana_alta_taller():
         horario = entry_horario.get()
         disponibilidad = entry_disponibilidad.get()
         info = (nombre_curso, costo, fecha_curso_lista[1],fecha_curso_lista[0],fecha_curso_lista[2], horario, disponibilidad)
-        if envio_bd_curso(info) == None:
-            indicador = ttk.Label(frm, text="EXITO", background='green')
-            indicador.grid(column=2, row=7)
-            frm.after(3000, lambda: indicador.grid_remove())
+        if verificar_campos_vacios(info):
+            if envio_bd_curso(info) == None:
+                indicador = ttk.Label(frm, text="EXITO", background='green')
+                indicador.grid(column=2, row=7)
+                frm.after(3000, lambda: indicador.grid_remove())
+            else:
+                ttk.Label(frm, text="FALLO", background='red').grid(column=2, row=7)
         else:
-            ttk.Label(frm, text="FALLO", background='red').grid(column=2, row=7)
+            messagebox.showinfo('ERROR', 'Existe error en campos')
             
 
 
@@ -1434,7 +1586,7 @@ def ventana_alta_personal():
     boton_enviar.grid(column=1, row=7)
 
 ######################################### VENTANA ALTA TARJETA ######################################
-    
+
 def ventana_alta_tarjeta():
     def enviar_tarjeta():
         titular = entry_titular.get()
@@ -1478,6 +1630,428 @@ def ventana_alta_tarjeta():
     boton_enviar = ttk.Button(frm, text='ENVIAR', command=enviar_tarjeta)
     boton_enviar.grid(column=1, row=7)
 
+########################################## VENTANA TRANSFERIR EXCEDENTE ##############################
+
+def ventana_trasnferir_exedente():
+    widthGeneral = 20
+    global labels_creados2
+    labels_creados2 = []
+    def buscar_curso_boton(op=0):
+        print(op)
+        widthGeneral = 20
+        if op == 1:
+            mes_seleccionado = mes_combobox2.get()
+            mostrar_cursos_combobox2.set('')
+            mostrar_clientes_combobox2.set('')
+        else:
+            mostrar_cursos_combobox.set('')
+            mostrar_clientes_combobox.set('')
+            mes_seleccionado = mes_combobox.get()
+        mes_en_numero = {'Enero':'01', 
+                         'Febrero':'02',
+                         'Marzo':'03',
+                         'Abril':'04',
+                         'Mayo':'05',
+                         'Junio':'06',
+                         'Julio':'07',
+                         'Agosto':'08',
+                         'Septiembre':'09',
+                         'Octubre':'10',
+                         'Noviembre':'11',
+                         'Diciembre':'12',}
+        if op == 1:
+            anio_seleccionado = anio_combobox2.get()
+        else:
+            anio_seleccionado = anio_combobox.get()
+        informacion = extraer_talleres_bd(mes_en_numero[mes_seleccionado], anio_seleccionado)
+        if informacion == "ERROR":
+            indicador = ttk.Label(frm, text='DATABASE ERROR', background='red')
+            indicador.grid(column=3, row=1)
+            frm.after(3000, lambda: indicador.grid_remove())
+            if op == 1:
+                mostrar_cursos_combobox2.set('')
+                mostrar_cursos_combobox2.config(state='disable', width=widthGeneral)
+                mostrar_clientes_combobox2.set('')
+                mostrar_clientes_combobox2.config(state='disable', width=widthGeneral)
+            else:
+                mostrar_cursos_combobox.set('')
+                mostrar_cursos_combobox.config(state='disable', width=widthGeneral)  
+                mostrar_clientes_combobox.set('')
+                mostrar_clientes_combobox.config(state='disable', width=widthGeneral)  
+        elif informacion == 'NOT FOUND':
+            indicador = ttk.Label(frm, text='NO INFO', background='red')
+            indicador.grid(column=3, row=1)
+            frm.after(3000, lambda: indicador.grid_remove())
+            if op == 1:
+                mostrar_cursos_combobox2.set('')
+                mostrar_cursos_combobox2.config(state='disable', width=widthGeneral)
+                mostrar_clientes_combobox2.set('')
+                mostrar_clientes_combobox2.config(state='disable', width=widthGeneral)
+            else:
+                mostrar_cursos_combobox.set('')
+                mostrar_cursos_combobox.config(state='disable', width=widthGeneral)  
+                mostrar_clientes_combobox.set('')
+                mostrar_clientes_combobox.config(state='disable', width=widthGeneral)  
+        else:
+            indicador = ttk.Label(frm, text='COINCIDENCIA', background='green')
+            indicador.grid(column=3, row=1)
+            frm.after(3000, lambda: indicador.grid_remove())
+            info_lista = []
+            for i in informacion:
+                formato_codigo_curso = f'{i[0]}-{i[1]}'
+                info_lista.append(formato_codigo_curso)
+            if op == 1:
+                mostrar_cursos_combobox2.config(state='readonly', values=info_lista, width=widthGeneral)
+            else:
+                mostrar_cursos_combobox.config(state='readonly', values=info_lista, width=widthGeneral)
+
+    def opcion_seleccionada_combobox_cursos(event):
+        boton_confirmar.config(state='disable')
+        mostrar_clientes_combobox.set('')
+        info_curso = mostrar_cursos_combobox.get()
+        info_curso_lista = info_curso.split('-')
+        clientes = extraer_clientes_bd(info_curso_lista[0])
+        if clientes == 'NO INFO':
+            indicador = ttk.Label(frm, text='NO INFO', background='red')
+            indicador.grid(column=1, row=0)
+            mostrar_clientes_combobox.configure(values=[''], state='disable')
+            frm.after(3000, lambda: indicador.grid_remove())
+        elif clientes == 'ERROR':
+            indicador = ttk.Label(frm, text='DB ERROR', background='red')
+            indicador.grid(column=1, row=0)
+            mostrar_clientes_combobox.configure(values=[''], state='disable')
+            frm.after(3000, lambda: indicador.grid_remove())
+        else:
+           clientes_formateados = formato_a_clientes(clientes)
+           mostrar_clientes_combobox.configure(state='enable', values=clientes_formateados)
+
+    def opcion_seleccionada_combobox_cursos2(event):
+        mostrar_clientes_combobox2.set('')
+        info_curso = mostrar_cursos_combobox2.get()
+        info_curso_lista = info_curso.split('-')
+        clientes = extraer_clientes_bd(info_curso_lista[0])
+        if clientes == 'NO INFO':
+            indicador = ttk.Label(frm, text='NO INFO', background='red')
+            indicador.grid(column=1, row=0)
+            mostrar_clientes_combobox2.configure(values=[''], state='disable')
+            frm.after(3000, lambda: indicador.grid_remove())
+        elif clientes == 'ERROR':
+            indicador = ttk.Label(frm, text='DB ERROR', background='red')
+            indicador.grid(column=1, row=0)
+            mostrar_clientes_combobox2.configure(values=[''], state='disable')
+            frm.after(3000, lambda: indicador.grid_remove())
+        else:
+           clientes_formateados = formato_a_clientes(clientes)
+           mostrar_clientes_combobox2.configure(state='enable', values=clientes_formateados)
+    
+    def opcion_seleccionada_combobox_clientes(event):
+        boton_confirmar.config(state='disable')
+
+    def boton_comprobar_comando():
+        global labels_creados2
+        eliminar_elementos_creados(labels_creados2)
+        labels_creados2 = []
+        cliente_t = mostrar_clientes_combobox.get()
+        cliente_r = mostrar_clientes_combobox2.get()
+        if verificar_campos_vacios([cliente_t, cliente_r]):
+            cliente_t_lista = cliente_t.split('-')
+            excedente = calcular_excedente(int(cliente_t_lista[0]), int(cliente_t_lista[2]))
+            if excedente >= 0:
+                messagebox.showinfo('AVISO', 'NO EXISTE EXCEDENTE PARA ESTE CLIENTE')
+            elif excedente < 0:
+                excedente = abs(excedente)
+                indicador_transaccion = ttk.Label(frm, text='RESUMEN DE TRANSACCION:')
+                indicador_transaccion.grid(column=0, row=4)
+                labels_creados2.append(indicador_transaccion)
+                indicador_excedente = ttk.Label(frm, text='EXCEDENTE CALCULADO:')
+                indicador_excedente.grid(column=0, row=5)
+                labels_creados2.append(indicador_excedente)
+                label_excedente = ttk.Label(frm, text=excedente)
+                label_excedente.grid(column=0, row=6)
+                boton_confirmar.config(state='enable')
+            else:
+                messagebox.showinfo('ERROR', 'ERROR EN VARIABLE excedente, boton_comprobar_comando()')
+        else:
+            messagebox.showinfo('ERROR', 'ERROR EN CAMPOS')
+
+    def boton_confirmar_comando():
+        eliminar_elementos_creados(labels_creados2)
+        cliente_t = mostrar_clientes_combobox.get()
+        cliente_r = mostrar_clientes_combobox2.get()
+        if verificar_campos_vacios([cliente_t, cliente_r]):
+            cliente_t_lista = cliente_t.split('-')
+            cliente_r_lista = cliente_r.split('-')
+            excedente = calcular_excedente(int(cliente_t_lista[0]), int(cliente_t_lista[2]))
+            fecha = datetime.now()
+            fecha_lista = [str(fecha.day), str(fecha.month), str(fecha.year)]
+            fecha_organizada = enlistar_fecha(fecha_lista, 'datetime')
+            info = [int(cliente_t_lista[0]), 'i', excedente, 'AJUSTE', 'taller', int(cliente_t_lista[2]), fecha_organizada[0], fecha_organizada[1], fecha_organizada[2]]#descripcion, tipo, monto, metodo, area, zona, dia, mes, anio
+            resultado_envio_ajuste = enviar_gasto_ingreso_db(info, op=2)
+            if resultado_envio_ajuste == True:
+                excedente = abs(excedente)
+                info = [int(cliente_r_lista[0]), 'i', excedente, 'AJUSTE', 'taller', int(cliente_r_lista[2]), fecha_organizada[0], fecha_organizada[1], fecha_organizada[2]]#descripcion, tipo, monto, metodo, area, zona, dia, mes, anio
+                resultado_envio_ingreso = enviar_gasto_ingreso_db(info, op=2)
+                if resultado_envio_ingreso == True:
+                    indicador = ttk.Label(frm, text='ENVIADO', background='GREEN')
+                    indicador.grid(column=1, row=0)
+                    frm.after(2000,lambda: indicador.grid_remove())
+                elif resultado_envio_ingreso == False:
+                    messagebox.showerror('ERROR', 'Se dio de alta el ajuste para el cliente con excedente pero ocurrio un error al enviar dicho ingreso al nuevo cliente, hay que eliminar el ajuste del cliente con excedente si no mostrara informacion erronea dicho taller')
+                else:
+                    messagebox.showinfo('ERROR', 'CASO EXTRAÑO CON VARIABLE resultado_envio_ingreso, hay que eliminar el ajuste del cliente con excedente ya que no se ha logrado enviar dicho excedente al cliente que recibe')
+            elif resultado_envio_ajuste == False:
+                indicador = ttk.Label(frm, text='ERROR', background='red')
+                indicador.grid(column=1, row=0)
+                frm.after(2000,lambda: indicador.grid_remove())
+            else:
+                messagebox.showerror('ERROR', 'Caso extraño en valor variable resultado_envio, boton_confirmar_comando')
+
+    ventana_secundaria = tk.Toplevel()
+    frm = ttk.Frame(ventana_secundaria, padding=50)
+    frm.place(x=100, y=100)
+    frm.grid()
+    ttk.Label(frm, text='TRANSFERIR EXCEDENTE:').grid(column=0, row=0)
+    meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+    anios = ['2024', '2025', '2026', '2027', '2028', '2029', '2030']
+    mes_combobox = ttk.Combobox(frm, values=meses, state="readonly", width=10)
+    mes_combobox.grid(column=1, row=2)
+    anio_combobox = ttk.Combobox(frm, values=anios, state='readonly', width=10)
+    anio_combobox.grid(column=2, row=2)
+    ttk.Label(frm, text='SELECCIONAR CLIENTE CON EXCEDENTE:').grid(column=0, row=2 )
+    ttk.Label(frm, text='MES').grid(column=1, row=1)
+    ttk.Label(frm, text='AÑO').grid(column=2, row=1)
+    ttk.Label(frm, text='SELECCIONAR TALLER:').grid(column=4, row=1)
+    ttk.Label(frm, text='CLIENTE:').grid(column=5, row=1)
+    boton_buscar = ttk.Button(frm, text="Buscar", command=buscar_curso_boton)
+    boton_buscar.grid(column=3, row=2)
+    mostrar_cursos_combobox = ttk.Combobox(frm, state="disable", width=widthGeneral)
+    mostrar_cursos_combobox.grid(column=4, row=2)
+    mostrar_cursos_combobox.bind("<<ComboboxSelected>>", opcion_seleccionada_combobox_cursos)
+    mostrar_clientes_combobox = ttk.Combobox(frm, state="disable", width=widthGeneral)
+    mostrar_clientes_combobox.grid(column=5, row=2)
+    mostrar_clientes_combobox.bind("<<ComboboxSelected>>", opcion_seleccionada_combobox_clientes)
+    ####################CLIENTE AL QUE SE LE TRANSFERIRA#############
+    mes_combobox2 = ttk.Combobox(frm, values=meses, state="readonly", width=10)
+    mes_combobox2.grid(column=1, row=3)
+    anio_combobox2 = ttk.Combobox(frm, values=anios, state='readonly', width=10)
+    anio_combobox2.grid(column=2, row=3)
+    ttk.Label(frm, text='SELECCIONAR CLIENTE QUE RECIBE:').grid(column=0, row=3 )
+    boton_buscar2 = ttk.Button(frm, text="Buscar", command=lambda op=1: buscar_curso_boton(op))
+    boton_buscar2.grid(column=3, row=3)
+    mostrar_cursos_combobox2 = ttk.Combobox(frm, state="disable", width=widthGeneral)
+    mostrar_cursos_combobox2.grid(column=4, row=3)
+    mostrar_cursos_combobox2.bind("<<ComboboxSelected>>", opcion_seleccionada_combobox_cursos2)
+    mostrar_clientes_combobox2 = ttk.Combobox(frm, state="disable", width=widthGeneral)
+    mostrar_clientes_combobox2.grid(column=5, row=3)
+    mostrar_clientes_combobox2.bind("<<ComboboxSelected>>", opcion_seleccionada_combobox_clientes)
+    boton_comprobar = ttk.Button(frm, text='COMPROBAR', command=boton_comprobar_comando)
+    boton_comprobar.grid(column=5,row=10)
+    boton_confirmar = ttk.Button(frm, text='CONFIRMAR', state='disable', command=boton_confirmar_comando)
+    boton_confirmar.grid(column=5,row=11)
+
+########################################## VENTANA RENDIMIENTO TALLERES ##############################
+    
+def ventana_rendimiento_talleres():
+    global labels_creados3
+    labels_creados3=[]
+    def boton_calcular_comando():
+        dia_inicio = combobox_dia1.get()
+        mes_inicio = combobox_mes1.get()
+        anio_inicio = combobox_anio1.get()
+        dia_fin = combobox_dia2.get()
+        mes_fin = combobox_mes2.get()
+        anio_fin = combobox_anio2.get()
+        mes_en_numero = {'Enero':'01', 
+                         'Febrero':'02',
+                         'Marzo':'03',
+                         'Abril':'04',
+                         'Mayo':'05',
+                         'Junio':'06',
+                         'Julio':'07',
+                         'Agosto':'08',
+                         'Septiembre':'09',
+                         'Octubre':'10',
+                         'Noviembre':'11',
+                         'Diciembre':'12',}
+        fechas_lista = [dia_inicio, mes_en_numero[mes_inicio], anio_inicio, dia_fin, mes_en_numero[mes_fin], anio_fin]
+        if verificar_campos_vacios(fechas_lista):
+            clientes = extraer_talleres_rangoFechas_db(fechas_lista)
+            if clientes == 'NO INFO':
+                indicador = ttk.Label(frm, text='NO INFO', background='red')
+                frm.after(3000, lambda: indicador.grid_remove())
+                indicador.grid(column=3, row=1)
+            elif clientes == 'ERROR':
+                indicador = ttk.Label(frm, text='DB ERROR', background='red')
+                frm.after(3000, lambda: indicador.grid_remove())
+                indicador.grid(column=3, row=1)
+            else:
+                info_rendimientos = informacion_rendimiento_talleres(clientes)#[monto_total_gastos, monto_total_ingresos, ganancia, rendimiento, disponibilidad[0][0]]
+                rendimiento_global = calculo_rendimientos_talleres(info_rendimientos)
+                indicador_ingresos = ttk.Label(frm, text='INGRESOS')
+                indicador_ingresos.grid(column=0, row=4)
+                labels_creados3.append(indicador_ingresos)
+                indicador_gastos = ttk.Label(frm, text='GASTOS')
+                indicador_gastos.grid(column=1, row=4)
+                labels_creados3.append(indicador_gastos)
+                indicador_ganancia = ttk.Label(frm, text='GANANCIA')
+                indicador_ganancia.grid(column=2, row=4)
+                labels_creados3.append(indicador_ganancia)
+                indicador_rendimiento = ttk.Label(frm, text='RENDIMIENTO')
+                indicador_rendimiento.grid(column=3, row=4)
+                labels_creados3.append(indicador_rendimiento)
+                ########################################
+                label_ingresos = ttk.Label(frm, text=rendimiento_global[1])
+                label_ingresos.grid(column=0, row=5)
+                labels_creados3.append(label_ingresos)
+                label_gastos = ttk.Label(frm, text=rendimiento_global[0])
+                label_gastos.grid(column=1, row=5)
+                labels_creados3.append(label_gastos)
+                label_ganancia = ttk.Label(frm, text=rendimiento_global[2])
+                label_ganancia.grid(column=2, row=5)
+                labels_creados3.append(label_ganancia)
+                label_rendimiento = ttk.Label(frm, text=rendimiento_global[3])
+                label_rendimiento.grid(column=3, row=5)
+                labels_creados3.append(label_rendimiento)
+
+                
+
+
+
+    global width_rendimiento 
+    width_rendimiento = 10
+    ventana_secundaria = tk.Toplevel()
+    frm = ttk.Frame(ventana_secundaria, padding=50)
+    frm.place(x=100, y=100)
+    frm.grid()
+    ttk.Label(frm, text='RENDIMIENTO TALLERES').grid(column=0,row=0)
+    ttk.Label(frm, text='Periodo').grid(column=0,row=1)
+    ttk.Label(frm, text='De:').grid(column=0, row=2)
+    dias = []
+    for i in range(1,32):
+        dias.append(str(i))
+    meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+    anios = ['2024', '2025', '2026', '2027', '2028', '2029', '2030']
+    combobox_dia1 = ttk.Combobox(frm, width=width_rendimiento, values=dias, state='readonly')
+    combobox_dia1.grid(column=1,row=2)
+    combobox_mes1 = ttk.Combobox(frm,width=width_rendimiento, values=meses, state='readonly')
+    combobox_mes1.grid(column=2,row=2)
+    combobox_anio1 = ttk.Combobox(frm,width=width_rendimiento, values=anios, state='readonly')
+    combobox_anio1.grid(column=3,row=2)
+    ttk.Label(frm, text='A:').grid(column=0, row=3)
+    combobox_dia2 = ttk.Combobox(frm,width=width_rendimiento, values=dias, state='readonly')
+    combobox_dia2.grid(column=1,row=3)
+    combobox_mes2 = ttk.Combobox(frm,width=width_rendimiento, values=meses, state='readonly')
+    combobox_mes2.grid(column=2,row=3)
+    combobox_anio2 = ttk.Combobox(frm,width=width_rendimiento, values=anios, state='readonly')
+    combobox_anio2.grid(column=3,row=3)
+    boton_calcular = ttk.Button(frm, text='Calcular', command=boton_calcular_comando)
+    boton_calcular.grid(column=4, row=3)
+
+######################################### VENTANA RENDIMIENTO GENERAL #################################
+    
+def ventana_rendimiento_general():
+    global labels_creados4
+    global gastosIngresos_extraidos
+    labels_creados4=[]
+    def boton_calcular_comando():
+        global gastosIngresos_extraidos
+        dia_inicio = combobox_dia1.get()
+        mes_inicio = combobox_mes1.get()
+        anio_inicio = combobox_anio1.get()
+        dia_fin = combobox_dia2.get()
+        mes_fin = combobox_mes2.get()
+        anio_fin = combobox_anio2.get()
+        mes_en_numero = {'Enero':'01', 
+                         'Febrero':'02',
+                         'Marzo':'03',
+                         'Abril':'04',
+                         'Mayo':'05',
+                         'Junio':'06',
+                         'Julio':'07',
+                         'Agosto':'08',
+                         'Septiembre':'09',
+                         'Octubre':'10',
+                         'Noviembre':'11',
+                         'Diciembre':'12',}
+        fechas_lista = [dia_inicio, mes_en_numero[mes_inicio], anio_inicio, dia_fin, mes_en_numero[mes_fin], anio_fin]
+        if verificar_campos_vacios(fechas_lista):
+            gastos_ingresos = extraer_gastoIngreso_rangoFechas_db(fechas_lista)
+            gastosIngresos_extraidos = gastos_ingresos
+            if gastos_ingresos == 'NO INFO':
+                indicador = ttk.Label(frm, text='NO INFO', background='red')
+                frm.after(3000, lambda: indicador.grid_remove())
+                indicador.grid(column=3, row=1)
+            elif gastos_ingresos == 'ERROR':
+                indicador = ttk.Label(frm, text='DB ERROR', background='red')
+                frm.after(3000, lambda: indicador.grid_remove())
+                indicador.grid(column=3, row=1)
+            else:
+                rendimiento_global = calcular_rendimiento_general(gastos_ingresos)#[monto_total_gastos, monto_total_ingresos, ganancia, rendimiento, disponibilidad[0][0]]
+                if rendimiento_global == 'NO INFO':
+                    messagebox.showerror('ERROR', 'LOS GASTOS O LOS INGRESOS SON 0 LO CUAL NO PERMITE QUE EL')
+                indicador_ingresos = ttk.Label(frm, text='INGRESOS')
+                indicador_ingresos.grid(column=0, row=4)
+                labels_creados4.append(indicador_ingresos)
+                indicador_gastos = ttk.Label(frm, text='GASTOS')
+                indicador_gastos.grid(column=1, row=4)
+                labels_creados4.append(indicador_gastos)
+                indicador_ganancia = ttk.Label(frm, text='GANANCIA')
+                indicador_ganancia.grid(column=2, row=4)
+                labels_creados4.append(indicador_ganancia)
+                indicador_rendimiento = ttk.Label(frm, text='RENDIMIENTO')
+                indicador_rendimiento.grid(column=3, row=4)
+                labels_creados4.append(indicador_rendimiento)
+                ########################################
+                label_ingresos = ttk.Label(frm, text=rendimiento_global[0])
+                label_ingresos.grid(column=0, row=5)
+                labels_creados4.append(label_ingresos)
+                label_gastos = ttk.Label(frm, text=rendimiento_global[1])
+                label_gastos.grid(column=1, row=5)
+                labels_creados4.append(label_gastos)
+                label_ganancia = ttk.Label(frm, text=rendimiento_global[2])
+                label_ganancia.grid(column=2, row=5)
+                labels_creados4.append(label_ganancia)
+                label_rendimiento = ttk.Label(frm, text=rendimiento_global[3])
+                label_rendimiento.grid(column=3, row=5)
+                labels_creados4.append(label_rendimiento)
+                boton_generar_excel = ttk.Button(frm, text='Generar excel', command = boton_generar_excel_comando)
+                boton_generar_excel.grid(column=3, row=6)
+                
+    def boton_generar_excel_comando():
+        info_excel_formateada = formato_excel_tablas(gastosIngresos_extraidos, 'gastos')
+        funExcel.generar_excel_tablas(info_excel_formateada, 'gastos')
+        
+
+    global width_rendimiento 
+    width_rendimiento = 10
+    ventana_secundaria = tk.Toplevel()
+    frm = ttk.Frame(ventana_secundaria, padding=50)
+    frm.place(x=100, y=100)
+    frm.grid()
+    ttk.Label(frm, text='RENDIMIENTO GENERAL').grid(column=0,row=0)
+    ttk.Label(frm, text='Periodo').grid(column=0,row=1)
+    ttk.Label(frm, text='De:').grid(column=0, row=2)
+    dias = []
+    for i in range(1,32):
+        dias.append(str(i))
+    meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+    anios = ['2024', '2025', '2026', '2027', '2028', '2029', '2030']
+    combobox_dia1 = ttk.Combobox(frm, width=width_rendimiento, values=dias, state='readonly')
+    combobox_dia1.grid(column=1,row=2)
+    combobox_mes1 = ttk.Combobox(frm,width=width_rendimiento, values=meses, state='readonly')
+    combobox_mes1.grid(column=2,row=2)
+    combobox_anio1 = ttk.Combobox(frm,width=width_rendimiento, values=anios, state='readonly')
+    combobox_anio1.grid(column=3,row=2)
+    ttk.Label(frm, text='A:').grid(column=0, row=3)
+    combobox_dia2 = ttk.Combobox(frm,width=width_rendimiento, values=dias, state='readonly')
+    combobox_dia2.grid(column=1,row=3)
+    combobox_mes2 = ttk.Combobox(frm,width=width_rendimiento, values=meses, state='readonly')
+    combobox_mes2.grid(column=2,row=3)
+    combobox_anio2 = ttk.Combobox(frm,width=width_rendimiento, values=anios, state='readonly')
+    combobox_anio2.grid(column=3,row=3)
+    boton_calcular = ttk.Button(frm, text='Calcular', command=boton_calcular_comando)
+    boton_calcular.grid(column=4, row=3)
+
 ######################################### MAIN ############################################################
 def main():
     def verificar_usuario():
@@ -1502,6 +2076,7 @@ def main():
                 boton_pagoCliente.config(state='enable')
                 boton_pagoCliente.config(state='enable')
                 boton_altaTarjeta.config(state='enable')
+                boton_TransExcedente.config(state='enable')
             elif pswReal[0][1] == 'USUARIO':
                 #boton_altaPersonal.config(state='enable')
                 #boton_altaTaller.config(state='enable')
@@ -1512,6 +2087,7 @@ def main():
                 boton_inscribirCliente.config(state='enable')
                 boton_pagoCliente.config(state='enable')
                 #boton_altaTarjeta.config(state='enable')
+                #boton_pagoCliente.config(state='enable')
             else:
                 messagebox.showinfo('ERROR', 'Error en variable pswReal[0][1]')
         
@@ -1539,18 +2115,25 @@ def main():
     boton_bajaTaller.grid(column=1, row=4)
     boton_consultaTaller = ttk.Button(frm, text="CONSULTAR TALLER", command=ventana_consultar_taller)
     boton_consultaTaller.grid(column=1, row=5)
+    boton_TransExcedente = ttk.Button(frm, text="RENDIMIENTO TALLERES", command=ventana_rendimiento_talleres)
+    boton_TransExcedente.grid(column=1, row=6)
     boton_inscribirCliente = ttk.Button(frm, text="INSCRIBIR CLIENTE", command=ventana_inscribir_cliente)
     boton_inscribirCliente.grid(column=2, row=3)
     boton_buscarCliente = ttk.Button(frm, text="BUSCAR CLIENTE", command=ventana_buscar_cliente)
     boton_buscarCliente.grid(column=2, row=4)
     boton_pagoCliente = ttk.Button(frm, text="PAGO CLIENTE", command=ventana_pago_cliente)
     boton_pagoCliente.grid(column=2, row=5)
+    boton_TransExcedente = ttk.Button(frm, text="TRANSFERIR EXC", command=ventana_trasnferir_exedente)
+    boton_TransExcedente.grid(column=2, row=6)
     boton_gastoIngreso = ttk.Button(frm, text="ALTA GASTO/INGRESO", command=ventana_ingresar_gasto_ingreso)
     boton_gastoIngreso.grid(column=3, row=3)
     boton_altaTarjeta = ttk.Button(frm, text="ALTA TARJETA", command=ventana_alta_tarjeta)
     boton_altaTarjeta.grid(column=3, row=4)
+    boton_rendimientoGeneral = ttk.Button(frm, text="RENDIMIENTO GENERAL", command=ventana_rendimiento_general)
+    boton_rendimientoGeneral.grid(column=3, row=5)
     boton_altaPersonal = ttk.Button(frm, text="ALTA PERSONAL", command=ventana_alta_personal)
     boton_altaPersonal.grid(column=4, row=3)
+
     ttk.Button(frm, text="CERRAR", command=root.destroy).grid(column=1, row=8)
     #HOLA
     root.mainloop()

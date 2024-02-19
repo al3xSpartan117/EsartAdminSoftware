@@ -5,7 +5,7 @@ import tkinter as tk
 import mysql.connector
 from fun_operativas import *
 import time
-
+import pandas as pd
  
 
 #################################
@@ -19,11 +19,13 @@ import time
 # )
 
 # cursor = conexion.cursor()
-# datos = (2, 'Astrid', 'Arguelles', '23', '100')
+
 
 # try:
-#     comando = f'INSERT INTO clientes2 (codigo, nombre, apellido, taller, pagado) values (%s,%s,%s,%s,%s)'
-#     cursor.execute(comando, datos)
+#     comando = f'SELECT * FROM gastos WHERE (dia>10)'
+#     cursor.execute(comando)
+#     info = cursor.fetchall()
+#     print(info)
 # except mysql.connector.Error as error:
 #     print(error)
 # finally:
@@ -32,21 +34,17 @@ import time
 #     conexion.close()
 
 
+datos_base_de_datos = [
+    {'nombre': 'Juan', 'edad': 30},
+    {'nombre': 'María', 'edad': 25},
+    {'nombre': 'Pedro', 'edad': 35}
+]
 
-# El programa que estoy haciendo es un programa administrativo para dar de alta talleres y tambien dar de alta clientes en dichos talleres, tiene funciones para consultar talleres, eliminar talleres, eliminar cursos, buscar cliente etc etc ahora el problema esta en que quiero llevar un control de gastos pero no se la logica de como hacerlo, ya que el negocio tiene ingresos de los clientes que se inscriben pero tambien hay gastos como, luz, agua, comida, materiales de los talleres etc etc no se como contabilizar eso mes con mes o semana con semana
+# Crea un DataFrame de Pandas
+df = pd.DataFrame(datos_base_de_datos)
 
-numero = '3333577403'
+# Guarda el DataFrame en un archivo Excel
+nombre_archivo = 'datos.xlsx'
+df.to_excel(nombre_archivo, index=False)
 
-def verificadorCel(n):
-    if len(n) == 10:
-        if solonumeros(n):
-            return True
-        else:
-            return False
-    else:
-        return False
-    
-    
-
-print(verificadorCel(numero))
-
+print(f"Archivo Excel '{nombre_archivo}' creado exitosamente.")
